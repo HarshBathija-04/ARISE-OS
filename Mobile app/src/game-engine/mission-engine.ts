@@ -227,3 +227,66 @@ export function defaultDailyMissions(forDateIso: string): Mission[] {
     instantiateMission(t, forDateIso, { type: 'DAILY' }),
   );
 }
+
+// ─────────────────── Seeded offline generation ───────────────────
+// Used only when the device is offline / signed out. When signed in, the day's
+// quests are pulled from the website (Postgres) so both apps show the same set.
+
+function xmur3(str: string): () => number {
+  let h = 1779033703 ^ str.length;
+  for (let i = 0; i < str.length; i++) {
+    h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
+    h = (h << 13) | (h >>> 19);
+  }
+  return () => {
+    h = Math.imul(h ^ (h >>> 16), 2246822507);
+    h = Math.imul(h ^ (h >>> 13), 3266489909);
+    h ^= h >>> 16;
+    return h >>> 0;
+  };
+}
+
+function mulberry32(a: number): () => number {
+  return () => {
+    a |= 0;
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** The daily anchors always included in an offline set. */
+const OFFLINE_ANCHOR_KEYS = [
+  'daily_wake', 'daily_gate', 'daily_dsa', 'daily_deepwork',
+  'daily_workout', 'daily_silence', 'daily_rest',
+];
+
+/**
+ * A varied daily set seeded by the date key ("YYYY-MM-DD"): stable within a day,
+ * different each day. Includes the anchors + a weighted-random pick of SIDE
+ * missions for flavour. Offline fallback only.
+ */
+export function generateDailyMissionsSeeded(forDateIso: string, dateKey: string): Mission[] {
+  const rng = mulberry32(xmur3(`soloos::${dateKey}`)());
+  const byKey = new Map(MISSION_TEMPLATES.map((t) => [t.templateKey, t]));
+
+  const chosen: MissionTemplate[] = [];
+  for (const k of OFFLINE_ANCHOR_KEYS) {
+    const t = byKey.get(k);
+    if (t) chosen.push(t);
+  }
+
+  // Randomly add 2–3 non-anchor missions (SIDE or remaining DAILY) for variety.
+  const extras = MISSION_TEMPLATES.filter(
+    (t) => t.type !== 'RECOVERY' && !OFFLINE_ANCHOR_KEYS.includes(t.templateKey),
+  );
+  const pickCount = 2 + Math.floor(rng() * 2); // 2 or 3
+  const pool = [...extras];
+  for (let i = 0; i < pickCount && pool.length > 0; i++) {
+    const idx = Math.floor(rng() * pool.length);
+    chosen.push(pool.splice(idx, 1)[0]!);
+  }
+
+  return chosen.map((t) => instantiateMission(t, forDateIso, { type: t.type }));
+}

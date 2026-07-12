@@ -20,12 +20,12 @@ import { TITLES } from "../src/lib/game-engine/content/titles";
 import { BOSSES } from "../src/lib/game-engine/content/bosses";
 import { DEFAULT_REWARDS } from "../src/lib/game-engine/content/rewards";
 import { generateDailyQuests } from "../src/lib/game-engine/quest-engine";
-import { gameDay } from "../src/lib/date";
+import { gameDay, dayKey } from "../src/lib/date";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  const email = process.env.PLAYER_EMAIL ?? "harsh@ascend.local";
+  const email = process.env.PLAYER_EMAIL ?? "harsh004bathija@gmail.com";
   const name = process.env.PLAYER_NAME ?? "Harsh Bathija";
   const password = process.env.PLAYER_PASSWORD ?? "change-me-after-first-login";
   const passwordHash = await bcrypt.hash(password, 10);
@@ -267,6 +267,8 @@ async function main() {
   });
   if (existingToday === 0) {
     const planned = generateDailyQuests({
+      dayKey: dayKey(),
+      userId: user.id,
       recentCompletion: [],
       failingStreaks: [],
       distractionMinutesYesterday: 0,

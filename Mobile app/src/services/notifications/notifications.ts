@@ -26,6 +26,7 @@ Notifications.setNotificationHandler({
 
 /** Stable identifiers so re-scheduling can cancel prior instances precisely. */
 const SCHEDULE_IDS = {
+  newDayQuests: 'soloos-new-day-quests',
   dailyMissions: 'soloos-daily-missions',
   streakWarning: 'soloos-streak-warning',
   eveningReview: 'soloos-evening-review',
@@ -136,6 +137,16 @@ export async function applySchedule(cfg: ScheduleConfig): Promise<void> {
   await cancelAllSchedules();
 
   if (cfg.channels.DAILY_MISSIONS) {
+    // Fixed 00:00 "new day" ping — the moment a fresh quest set becomes available.
+    await scheduleDaily({
+      hour: 0,
+      minute: 0,
+      channelId: 'DAILY_MISSIONS',
+      title: 'SYSTEM // A NEW DAY BEGINS',
+      body: 'Your quests have reset. Open SOLO OS to receive today’s objectives.',
+      identifier: SCHEDULE_IDS.newDayQuests,
+    });
+
     const t = parseTime(cfg.dailyMissionsTime, 5, 0);
     await scheduleDaily({
       ...t,

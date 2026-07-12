@@ -1,6 +1,64 @@
 import { prisma } from "@/lib/prisma";
 import { completeQuest } from "./service";
+import { gameDay } from "@/lib/date";
 import type { QuestStatus } from "@prisma/client";
+
+/**
+ * Map a Postgres quest onto the mobile Mission's activity/objective fields so the
+ * app renders the right control (timer for study/focus, counter for DSA, manual
+ * confirm otherwise) and its anti-farming/telemetry buckets line up. Driven by
+ * the quest's `streakKey`/`category`/`estMinutes` — no template lookup required.
+ */
+function mapQuestActivity(q: {
+  streakKey: string | null;
+  category: string;
+  estMinutes: number;
+}): {
+  activityType: string;
+  objectiveType: string;
+  targetValue: number;
+  verificationType: string;
+} {
+  const streakActivity: Record<string, string> = {
+    wake: "WAKE_5AM",
+    gate: "GATE_STUDY",
+    dsa: "DSA",
+    deepwork: "DEEP_WORK",
+    workout: "WORKOUT",
+    cardio: "RUNNING",
+    sleep: "ROUTINE_COMPLETION",
+    "no-reels": "NO_REELS",
+    "porn-free": "PORN_FREE",
+    nofap: "PORN_FREE",
+    "gaming-control": "ROUTINE_COMPLETION",
+    "phone-curfew": "NO_REELS",
+    routine: "ROUTINE_COMPLETION",
+  };
+
+  const categoryActivity: Record<string, string> = {
+    study: "GATE_STUDY",
+    focus: "DEEP_WORK",
+    fitness: "WORKOUT",
+    recovery: "RECOVERY",
+    discipline: "ROUTINE_COMPLETION",
+    mind: "FOCUS_SESSION",
+  };
+
+  const activityType =
+    (q.streakKey ? streakActivity[q.streakKey] : undefined) ??
+    categoryActivity[q.category] ??
+    "CUSTOM";
+
+  // DSA is a count objective; timed study/focus blocks use a duration objective;
+  // everything else is a simple manual confirmation.
+  if (q.streakKey === "dsa") {
+    return { activityType, objectiveType: "COUNT", targetValue: 3, verificationType: "PROGRESS_VALUE" };
+  }
+  if ((q.category === "study" || q.category === "focus") && q.estMinutes >= 20) {
+    return { activityType, objectiveType: "DURATION_MINUTES", targetValue: q.estMinutes, verificationType: "TIMER" };
+  }
+  return { activityType, objectiveType: "BOOLEAN", targetValue: 1, verificationType: "MANUAL" };
+}
 
 export async function syncProfileFromMobile(userId: string, mobileProfile: any) {
   if (!mobileProfile) return;
@@ -160,14 +218,15 @@ export async function mergePostgresToSnapshot(userId: string, snapshotData: any)
   }
 
   // Inject web-generated quests that aren't yet in the mobile snapshot.
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
+  // Restrict to TODAY's game-day (Asia/Kolkata) so stale previous-day dailies
+  // are never re-injected. `gameDay()` matches how quests are stored.
+  const today = gameDay();
+
   const relevantQuests = await prisma.quest.findMany({
-    where: { 
-      userId, 
-      assignedDate: { gte: today }, 
-      status: "ACTIVE" 
+    where: {
+      userId,
+      assignedDate: today,
+      status: "ACTIVE",
     },
   });
 
@@ -185,6 +244,8 @@ export async function mergePostgresToSnapshot(userId: string, snapshotData: any)
           }));
         }
 
+        const activity = mapQuestActivity(q);
+
         newMissions.push({
           id: q.id,
           title: q.title,
@@ -193,18 +254,18 @@ export async function mergePostgresToSnapshot(userId: string, snapshotData: any)
           difficulty: q.difficulty || "C",
           category: q.category,
           status: q.status === "COMPLETED" ? "COMPLETED" : "AVAILABLE",
-          objectiveType: "BOOLEAN",
-          targetValue: 1,
-          currentProgress: q.status === "COMPLETED" ? 1 : 0,
+          objectiveType: activity.objectiveType,
+          targetValue: activity.targetValue,
+          currentProgress: q.status === "COMPLETED" ? activity.targetValue : 0,
           xpReward: q.baseXp,
           coinReward: q.coinReward,
           attributeRewards,
-          activityType: "CUSTOM",
+          activityType: activity.activityType,
           startDate: q.assignedDate.toISOString(),
           deadline: q.deadline ? q.deadline.toISOString() : null,
           completedAt: q.status === "COMPLETED" ? q.updatedAt.toISOString() : null,
           failureConsequence: q.failureNote,
-          verificationType: "MANUAL",
+          verificationType: activity.verificationType,
           bossId: q.bossBattleId,
           createdAt: q.createdAt.toISOString(),
           updatedAt: q.updatedAt.toISOString(),

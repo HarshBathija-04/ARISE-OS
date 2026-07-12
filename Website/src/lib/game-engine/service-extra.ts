@@ -4,7 +4,7 @@
  */
 import type { FocusCategory } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { gameDay } from "@/lib/date";
+import { gameDay, dayKey } from "@/lib/date";
 import { advanceStreak, bumpMetric, notify, logActivity } from "./service";
 import { generateDailyQuests } from "./quest-engine";
 
@@ -175,6 +175,8 @@ export async function ensureTodayQuests(userId: string) {
   const weakest = await weakestAttributeKey(userId);
 
   const planned = generateDailyQuests({
+    dayKey: dayKey(),
+    userId,
     recentCompletion: recent,
     failingStreaks,
     distractionMinutesYesterday: distractionYesterday,

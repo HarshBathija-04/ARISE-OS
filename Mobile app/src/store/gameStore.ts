@@ -18,7 +18,7 @@ import { processLevelIncrease, getLevelProgress } from '@/game-engine/level-engi
 import { applyCoins } from '@/game-engine/coin-engine';
 import { applyAntiFarming } from '@/game-engine/anti-farming-engine';
 import { computeFocusXp } from '@/game-engine/focus-engine';
-import { defaultDailyMissions } from '@/game-engine/mission-engine';
+import { defaultDailyMissions, generateDailyMissionsSeeded } from '@/game-engine/mission-engine';
 import { todayIso, nowIso, isSameDay } from '@/utils/date';
 import { useSyncStore } from './syncStore';
 
@@ -151,23 +151,55 @@ export const useGameStore = create<GameState>()(
         if (s.daily.date !== today) {
           set({ daily: freshDaily() });
         }
-        // Generate today's missions if none exist for today.
+        // Already have today's dailies? Nothing to do.
         const hasToday = s.missions.some(
           (m) => m.type === 'DAILY' && isSameDay(m.createdAt, today),
         );
-        if (!hasToday) {
-          const generated = defaultDailyMissions(nowIso());
-          // Keep any non-daily missions, replace stale dailies.
-          const kept = s.missions.filter((m) => m.type !== 'DAILY');
-          set({ missions: [...generated, ...kept] });
-          if (s.profile.onboardingComplete) {
+        if (hasToday) return;
+
+        // Drop stale previous-day dailies so they never linger under a new set.
+        const dropStale = () =>
+          set((st) => ({
+            missions: st.missions.filter(
+              (m) => m.type !== 'DAILY' || isSameDay(m.createdAt, today),
+            ),
+          }));
+
+        // Local generation path (offline / signed out): seeded, so the set is
+        // stable within the day but varies day to day.
+        const generateLocal = () => {
+          dropStale();
+          const generated = generateDailyMissionsSeeded(nowIso(), today);
+          set((st) => ({ missions: [...generated, ...st.missions] }));
+          if (get().profile.onboardingComplete) {
             get().pushEvent({
               type: 'SYSTEM',
               title: "TODAY'S MISSIONS AVAILABLE",
               detail: `${generated.length} missions generated.`,
             });
           }
-        }
+        };
+
+        // When signed in, the website (Postgres) is the source of truth for the
+        // day's quests — pull them so web + mobile show the identical set. Only
+        // fall back to local generation when offline or the server has none yet.
+        void (async () => {
+          try {
+            const { canSync, pullSnapshot } = await import('@/services/sync/snapshot');
+            if (await canSync()) {
+              dropStale();
+              await pullSnapshot();
+              const nowHas = get().missions.some(
+                (m) => m.type === 'DAILY' && isSameDay(m.createdAt, todayIso()),
+              );
+              if (!nowHas) generateLocal();
+            } else {
+              generateLocal();
+            }
+          } catch {
+            generateLocal();
+          }
+        })();
       },
 
       resetAll: () =>

@@ -8,6 +8,7 @@
  *
  * Entirely no-ops when the API is not configured or the user is signed out.
  */
+import { AppState, type AppStateStatus } from 'react-native';
 import { useAuthStore } from '@/store/authStore';
 import { useGameStore } from '@/store/gameStore';
 import { useTimetableStore } from '@/store/timetableStore';
@@ -45,8 +46,19 @@ export function initSync(): () => void {
 
   const unsubGame = useGameStore.subscribe(() => schedulePush());
 
+  // On returning to the foreground, roll the day over: `ensureToday` rolls the
+  // daily tracker and, when signed in, pulls the website-generated quests for
+  // today (the source of truth). This is how the mobile app "triggers" the new
+  // day's quests without relying on background execution at exactly midnight.
+  const onAppState = (state: AppStateStatus) => {
+    if (state !== 'active') return;
+    useGameStore.getState().ensureToday();
+  };
+  const appStateSub = AppState.addEventListener('change', onAppState);
+
   return () => {
     unsubGame();
+    appStateSub.remove();
     if (pushTimer) clearTimeout(pushTimer);
     started = false;
   };

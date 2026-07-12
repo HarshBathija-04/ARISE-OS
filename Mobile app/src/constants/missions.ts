@@ -126,6 +126,39 @@ export const MISSION_TEMPLATES: MissionTemplate[] = [
     attributeRewards: [{ code: 'DIS', xp: 30 }, { code: 'CON', xp: 20 }],
     verificationType: 'MANUAL', failureConsequence: null,
   },
+  // ── Extra SIDE missions for daily variety (offline generation pool) ──
+  {
+    templateKey: 'side_pyq', title: 'PYQ SKIRMISH',
+    description: 'Solve one set of previous-year questions.', type: 'SIDE', difficulty: 'B',
+    category: 'GATE', activityType: 'GATE_STUDY', objectiveType: 'DURATION_MINUTES',
+    targetValue: 45, baseXp: 130, baseCoins: 12,
+    attributeRewards: [{ code: 'INT', xp: 45 }, { code: 'FOC', xp: 20 }],
+    verificationType: 'TIMER', failureConsequence: null,
+  },
+  {
+    templateKey: 'side_dsa_hard', title: 'BREAK A HARD PROBLEM',
+    description: 'Fully solve one Hard-rated problem, edge cases included.', type: 'SIDE', difficulty: 'A',
+    category: 'DSA', activityType: 'DSA', objectiveType: 'COUNT',
+    targetValue: 1, baseXp: 170, baseCoins: 14,
+    attributeRewards: [{ code: 'SKL', xp: 55 }, { code: 'INT', xp: 35 }, { code: 'FOC', xp: 20 }],
+    verificationType: 'PROGRESS_VALUE', failureConsequence: null,
+  },
+  {
+    templateKey: 'side_cardio', title: 'ROADWORK',
+    description: 'Run or brisk-walk at least 2 km.', type: 'SIDE', difficulty: 'C',
+    category: 'PHYSICAL', activityType: 'RUNNING', objectiveType: 'BOOLEAN',
+    targetValue: 1, baseXp: 100, baseCoins: 9,
+    attributeRewards: [{ code: 'END', xp: 45 }, { code: 'VIT', xp: 20 }],
+    verificationType: 'MANUAL', failureConsequence: null,
+  },
+  {
+    templateKey: 'side_meditate', title: 'STILL THE MIND',
+    description: '10 minutes of meditation or breathwork.', type: 'SIDE', difficulty: 'D',
+    category: 'FOCUS', activityType: 'FOCUS_SESSION', objectiveType: 'DURATION_MINUTES',
+    targetValue: 10, baseXp: 60, baseCoins: 5,
+    attributeRewards: [{ code: 'FOC', xp: 30 }, { code: 'VIT', xp: 12 }],
+    verificationType: 'TIMER', failureConsequence: null,
+  },
 ];
 
 export function templateByKey(key: string): MissionTemplate | undefined {
