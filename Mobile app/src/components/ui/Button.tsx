@@ -19,7 +19,7 @@ interface ButtonProps {
 }
 
 const variantColors: Record<Variant, { bg: string; fg: string; border: string; glow?: string }> = {
-  primary: { bg: colors.energyBright, fg: colors.bg, border: colors.energyBright, glow: colors.energy },
+  primary: { bg: colors.energyBright, fg: colors.text, border: colors.energyBright, glow: colors.energy },
   secondary: { bg: colors.surface2, fg: colors.text, border: colors.borderBright },
   ghost: { bg: 'transparent', fg: colors.textSecondary, border: colors.border },
   danger: { bg: withAlpha(colors.crimson, 0.15), fg: colors.crimson, border: colors.crimson },

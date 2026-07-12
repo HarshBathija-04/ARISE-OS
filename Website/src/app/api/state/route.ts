@@ -11,6 +11,12 @@
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireBearer, jsonOk, jsonError, CORS_HEADERS, corsPreflight } from "@/lib/api-auth";
+import { 
+  syncProfileFromMobile, 
+  syncAttributesFromMobile, 
+  syncMissionsFromMobile,
+  mergePostgresToSnapshot 
+} from "@/lib/game-engine/sync-engine";
 
 export function OPTIONS() {
   return corsPreflight();
@@ -19,9 +25,19 @@ export function OPTIONS() {
 export async function GET(req: Request) {
   const auth = await requireBearer(req);
   if ("error" in auth) return auth.error;
+  
   const snapshot = await prisma.gameStateSnapshot.findUnique({ where: { userId: auth.userId } });
+  let snapshotData = snapshot ? snapshot.data : null;
+  
+  // Merge Postgres data into the snapshot before sending it to the mobile app
+  try {
+    snapshotData = await mergePostgresToSnapshot(auth.userId, snapshotData);
+  } catch (e) {
+    console.error("Error merging postgres to snapshot", e);
+  }
+
   return Response.json(
-    { ok: true, snapshot: snapshot ? { data: snapshot.data, revision: snapshot.revision, updatedAt: snapshot.updatedAt } : null },
+    { ok: true, snapshot: { data: snapshotData, revision: snapshot?.revision ?? 0, updatedAt: snapshot?.updatedAt ?? new Date() } },
     { headers: CORS_HEADERS },
   );
 }
@@ -54,6 +70,26 @@ export async function PUT(req: Request) {
       },
       { status: 409, headers: CORS_HEADERS },
     );
+  }
+
+  // Parse incoming JSON and sync to Postgres
+  if (data && typeof data === 'object' && (data as any).game) {
+    const game = (data as any).game;
+    try {
+      // 1. Sync missions FIRST so that any Postgres quests completed offline 
+      // are processed and award XP to the Postgres profile.
+      await syncMissionsFromMobile(auth.userId, game.missions);
+      
+      // 2. Sync profile and attributes SECOND.
+      // This will take the Math.max() of the newly updated Postgres stats
+      // and the mobile stats, completely eliminating any double-counting bugs!
+      await Promise.all([
+        syncProfileFromMobile(auth.userId, game.profile),
+        syncAttributesFromMobile(auth.userId, game.attributes)
+      ]);
+    } catch (e) {
+      console.error("Error syncing mobile snapshot to Postgres", e);
+    }
   }
 
   const saved = await prisma.gameStateSnapshot.upsert({
