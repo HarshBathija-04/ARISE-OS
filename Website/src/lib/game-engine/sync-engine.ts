@@ -62,9 +62,38 @@ export async function syncMissionsFromMobile(userId: string, mobileMissions: any
     if (!mission.id) continue;
 
     // Check if it exists in Postgres
-    const quest = await prisma.quest.findFirst({
+    let quest = await prisma.quest.findFirst({
       where: { id: mission.id, userId }
     });
+
+    if (!quest) {
+      // It's a new mobile-generated quest. Create it in Postgres.
+      const assignedDate = mission.startDate ? new Date(mission.startDate) : new Date();
+      if (isNaN(assignedDate.getTime())) {
+        assignedDate.setTime(Date.now());
+      }
+      assignedDate.setHours(0, 0, 0, 0);
+
+      quest = await prisma.quest.create({
+        data: {
+          id: mission.id,
+          userId,
+          title: mission.title || "Unknown Mission",
+          description: mission.description || "",
+          type: (mission.type === "DAILY" ? "DAILY" : mission.type === "MAIN" ? "MAIN" : "SIDE") as any,
+          difficulty: mission.difficulty || "C",
+          category: mission.category || "GENERAL",
+          estMinutes: mission.objectiveType === "DURATION_MINUTES" ? mission.targetValue : 30,
+          baseXp: mission.xpReward || 0,
+          attributeXp: Array.isArray(mission.attributeRewards) ? (mission.attributeRewards.reduce((acc: any, r: any) => {
+            acc[r.code] = r.xp; return acc;
+          }, {})) : {},
+          coinReward: mission.coinReward || 0,
+          status: mission.status === "COMPLETED" ? "ACTIVE" : (mission.status === "FAILED" ? "FAILED" : "ACTIVE"),
+          assignedDate: assignedDate,
+        }
+      });
+    }
 
     // If it exists in Postgres and is active, but is completed on mobile
     if (quest && quest.status === "ACTIVE" && mission.status === "COMPLETED") {
