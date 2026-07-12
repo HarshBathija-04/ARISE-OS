@@ -14,6 +14,8 @@ import type { NotificationChannelId } from '@/services/notifications/channels';
 import { CHANNEL_IDS } from '@/services/notifications/channels';
 import { useGameStore } from './gameStore';
 
+import { useTimetableStore } from './timetableStore';
+
 type ChannelMap = Record<NotificationChannelId, boolean>;
 
 function allChannels(value: boolean): ChannelMap {
@@ -76,6 +78,7 @@ export const useNotificationStore = create<NotificationState>()(
           streakWarningTime: s.streakWarningTime,
           eveningReviewTime: s.eveningReviewTime,
           privacyMode: useGameStore.getState().profile.privacyMode,
+          timetableBlocks: useTimetableStore.getState().blocks,
         });
       },
 
@@ -114,3 +117,11 @@ export const useNotificationStore = create<NotificationState>()(
     },
   ),
 );
+
+// Subscribe to timetable blocks changes so alarms are instantly rescheduled
+// when a task is added, edited, or deleted.
+useTimetableStore.subscribe((state, prevState) => {
+  if (state.blocks !== prevState.blocks) {
+    void useNotificationStore.getState().reschedule();
+  }
+});

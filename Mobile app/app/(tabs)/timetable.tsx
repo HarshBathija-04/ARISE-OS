@@ -125,44 +125,47 @@ export default function TimetableScreen() {
     skipBlock(block.id);
   }, [skipBlock]);
 
-  return (
-    <Screen scroll onRefresh={onRefresh} refreshing={refreshing}>
-      {/* Header */}
-      <View style={styles.head}>
-        <View>
-          <Text variant="title" color={colors.text}>TIMETABLE</Text>
-          <Text variant="caption" color={colors.textDim} style={{ marginTop: 2 }}>
-            {completedCount}/{blocks.length} completed · +{totalXpEarned} XP
-          </Text>
-        </View>
-        <View style={styles.headerActions}>
+  const headerActions = (
+    <View style={styles.headerActions}>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => { try { haptics.tap(); } catch {} toggleEditing(); }}
+        style={[styles.iconBtn, editing && styles.iconBtnActive]}
+      >
+        <Edit3 size={18} color={editing ? colors.phantomCyan : colors.textSecondary} />
+      </Pressable>
+      {editing && (
+        <>
           <Pressable
-            onPress={() => { try { haptics.tap(); } catch {} toggleEditing(); }}
-            style={[styles.iconBtn, editing && styles.iconBtnActive]}
+            accessibilityRole="button"
+            onPress={() => { try { haptics.tap(); } catch {} setShowAddModal(true); }}
+            style={styles.iconBtn}
           >
-            <Edit3 size={18} color={editing ? colors.cyan : colors.textSecondary} />
+            <Plus size={18} color={colors.green} />
           </Pressable>
-          {editing && (
-            <>
-              <Pressable
-                onPress={() => { try { haptics.tap(); } catch {} setShowAddModal(true); }}
-                style={styles.iconBtn}
-              >
-                <Plus size={18} color={colors.green} />
-              </Pressable>
-              <Pressable
-                onPress={() => { try { haptics.tap(); } catch {} resetToDefaults(); }}
-                style={styles.iconBtn}
-              >
-                <RotateCcw size={16} color={colors.crimson} />
-              </Pressable>
-            </>
-          )}
-        </View>
-      </View>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => { try { haptics.tap(); } catch {} resetToDefaults(); }}
+            style={styles.iconBtn}
+          >
+            <RotateCcw size={16} color={colors.crimson} />
+          </Pressable>
+        </>
+      )}
+    </View>
+  );
 
+  return (
+    <Screen
+      scroll
+      onRefresh={onRefresh}
+      refreshing={refreshing}
+      title="TIMETABLE"
+      subtitle={`${completedCount}/${blocks.length} completed · +${totalXpEarned} XP`}
+      headerRight={headerActions}
+    >
       {/* Current Task Card */}
-      <View style={{ marginTop: spacing.md }}>
+      <View style={{ marginTop: spacing.sm }}>
         <CurrentTaskCard currentBlock={currentBlock} />
       </View>
 
@@ -180,7 +183,7 @@ export default function TimetableScreen() {
       {/* Timeline */}
       <SectionHeader
         title="DAILY SCHEDULE"
-        accent={colors.energy}
+        accent={colors.systemBlue}
       />
       <View style={styles.timeline}>
         {blocks.map((block) => {
@@ -231,28 +234,28 @@ export default function TimetableScreen() {
 }
 
 const styles = StyleSheet.create({
-  head: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-  },
   headerActions: {
     flexDirection: 'row',
     gap: spacing.sm,
   },
   iconBtn: {
-    width: 36,
-    height: 36,
+    width: 42,
+    height: 42,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.base,
+    borderColor: withAlpha(colors.border, 0.6),
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surface,
+    backgroundColor: withAlpha(colors.surface, 0.8),
   },
   iconBtnActive: {
-    borderColor: withAlpha(colors.cyan, 0.5),
-    backgroundColor: withAlpha(colors.cyan, 0.08),
+    borderColor: withAlpha(colors.phantomCyan, 0.5),
+    backgroundColor: withAlpha(colors.phantomCyan, 0.08),
+    shadowColor: colors.phantomCyan,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 3,
   },
   timeline: {
     gap: spacing.sm,

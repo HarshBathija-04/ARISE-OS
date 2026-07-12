@@ -1,15 +1,21 @@
 import { useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Swords, ArrowRight } from 'lucide-react-native';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
+import { Button } from '@/components/ui/Button';
+import { ProgressBar } from '@/components/ui/ProgressBar';
 import { SectionHeader } from '@/components/ui/SectionHeader';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { MissionCard } from '@/components/missions/MissionCard';
-import { Panel } from '@/components/ui/Panel';
-import { colors, spacing } from '@/theme';
+import { colors, spacing, withAlpha } from '@/theme';
 import { useGameStore } from '@/store/gameStore';
 import { todaysMissions, dailyCompletionRate } from '@/store/selectors';
+import { systemDateLabel } from '@/utils/date';
 
 export default function QuestsScreen() {
+  const router = useRouter();
   const missions = useGameStore((s) => s.missions);
   const ensureToday = useGameStore((s) => s.ensureToday);
 
@@ -21,72 +27,103 @@ export default function QuestsScreen() {
   const completed = today.filter((m) => m.status === 'COMPLETED');
   const failed = today.filter((m) => m.status === 'FAILED' || m.status === 'EXPIRED');
 
+  const dailyTotal = today.filter((m) => m.type === 'DAILY').length;
+  const dailyDone = today.filter((m) => m.type === 'DAILY' && m.status === 'COMPLETED').length;
+
+  // The next thing to act on — powers the docked thumb-zone action.
+  const next = active[0] ?? available[0] ?? null;
+
+  const pill = (
+    <View style={styles.pill}>
+      <Text variant="label" color={colors.phantomCyan}>{Math.round(rate * 100)}%</Text>
+    </View>
+  );
+
+  const footer = next ? (
+    <Button
+      label={active.length > 0 ? 'CONTINUE MISSION' : 'START NEXT MISSION'}
+      size="lg"
+      full
+      haptic="heavy"
+      iconRight
+      icon={<ArrowRight size={18} color={colors.white} />}
+      onPress={() => router.push(`/mission/${next.id}`)}
+    />
+  ) : undefined;
+
   return (
-    <Screen scroll onRefresh={ensureToday} refreshing={false}>
-      <View style={styles.head}>
-        <Text variant="title" color={colors.text}>MISSIONS</Text>
-        <View style={styles.pill}>
-          <Text variant="caption" color={colors.cyan}>
-            {Math.round(rate * 100)}% TODAY
+    <Screen
+      scroll
+      onRefresh={ensureToday}
+      refreshing={false}
+      title="MISSIONS"
+      subtitle={systemDateLabel()}
+      accent={colors.phantomCyan}
+      headerRight={pill}
+      footer={footer}
+    >
+      {today.length > 0 && (
+        <View style={styles.progressBlock}>
+          <ProgressBar progress={rate} color={colors.phantomCyan} height={7} segmented />
+          <Text variant="caption" color={colors.textDim} style={styles.progressLabel}>
+            {dailyDone}/{dailyTotal} DAILY CLEARED
           </Text>
         </View>
-      </View>
+      )}
 
       {today.length === 0 && (
-        <Panel style={{ marginTop: spacing.base }}>
-          <Text dim>No missions today. Pull to refresh to generate them.</Text>
-        </Panel>
+        <EmptyState
+          icon={<Swords size={22} color={colors.phantomCyan} />}
+          title="NO MISSIONS YET"
+          hint="Pull down to refresh and the System will generate today's objectives."
+          accent={colors.phantomCyan}
+        />
       )}
 
       {active.length > 0 && (
-        <>
-          <SectionHeader title="ACTIVE" accent={colors.energyBright} />
-          <View style={styles.list}>
-            {active.map((m) => <MissionCard key={m.id} mission={m} />)}
-          </View>
-        </>
+        <Section title="ACTIVE" accent={colors.systemBlue} items={active} />
       )}
-
       {available.length > 0 && (
-        <>
-          <SectionHeader title="AVAILABLE" accent={colors.cyan} />
-          <View style={styles.list}>
-            {available.map((m) => <MissionCard key={m.id} mission={m} />)}
-          </View>
-        </>
+        <Section title="AVAILABLE" accent={colors.phantomCyan} items={available} />
       )}
-
       {completed.length > 0 && (
-        <>
-          <SectionHeader title="COMPLETED" accent={colors.green} />
-          <View style={styles.list}>
-            {completed.map((m) => <MissionCard key={m.id} mission={m} />)}
-          </View>
-        </>
+        <Section title="COMPLETED" accent={colors.green} items={completed} />
       )}
-
       {failed.length > 0 && (
-        <>
-          <SectionHeader title="FAILED" accent={colors.crimson} />
-          <View style={styles.list}>
-            {failed.map((m) => <MissionCard key={m.id} mission={m} />)}
-          </View>
-        </>
+        <Section title="FAILED" accent={colors.crimson} items={failed} />
       )}
-
-      <View style={{ height: 32 }} />
     </Screen>
   );
 }
 
+function Section({ title, accent, items }: { title: string; accent: string; items: React.ComponentProps<typeof MissionCard>['mission'][] }) {
+  return (
+    <View style={styles.section}>
+      <SectionHeader title={`${title}  ·  ${items.length}`} accent={accent} />
+      <View style={styles.list}>
+        {items.map((m) => <MissionCard key={m.id} mission={m} />)}
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  head: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   pill: {
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: withAlpha(colors.phantomCyan, 0.4),
+    backgroundColor: withAlpha(colors.phantomCyan, 0.08),
     borderRadius: 999,
     paddingHorizontal: 12,
-    paddingVertical: 4,
+    paddingVertical: 5,
+    // Subtle glow
+    shadowColor: colors.phantomCyan,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 3,
   },
+  progressBlock: { gap: 6, marginTop: spacing.sm, marginBottom: spacing.xs },
+  progressLabel: { alignSelf: 'flex-end' },
+  section: { marginTop: spacing.lg },
   list: { gap: spacing.sm },
 });

@@ -1,10 +1,11 @@
 import { View, StyleSheet, Switch, Pressable, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Shield, RotateCcw, Award, Gift, BarChart3, Bot, Bell, ChevronRight, Cloud, CloudOff } from 'lucide-react-native';
+import { Shield, RotateCcw, Award, Gift, BarChart3, Bot, Bell, Cloud, CloudOff } from 'lucide-react-native';
 import { Screen } from '@/components/ui/Screen';
 import { Text } from '@/components/ui/Text';
 import { Panel } from '@/components/ui/Panel';
 import { Button } from '@/components/ui/Button';
+import { Row } from '@/components/ui/Row';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { SyncStatus } from '@/components/system/SyncStatus';
 import { colors, radius, spacing, withAlpha } from '@/theme';
@@ -16,10 +17,10 @@ import { titleDef } from '@/constants/titles';
 import { haptics } from '@/services/notifications/haptics';
 
 const LINKS = [
-  { label: 'TITLES', icon: Award, route: '/titles', color: colors.gold },
+  { label: 'TITLES', icon: Award, route: '/titles', color: colors.monarchGold },
   { label: 'REWARD VAULT', icon: Gift, route: '/rewards', color: colors.violetBright },
-  { label: 'ANALYTICS', icon: BarChart3, route: '/analytics', color: colors.energy },
-  { label: 'ECHO GUIDE', icon: Bot, route: '/guide', color: colors.cyan },
+  { label: 'ANALYTICS', icon: BarChart3, route: '/analytics', color: colors.systemBlue },
+  { label: 'ECHO GUIDE', icon: Bot, route: '/guide', color: colors.phantomCyan },
   { label: 'NOTIFICATIONS', icon: Bell, route: '/settings/notifications', color: colors.green },
 ] as const;
 
@@ -35,7 +36,7 @@ export default function ProfileScreen() {
 
   const confirmReset = () => {
     Alert.alert(
-      'RESET SYSTEM',
+      '「SYSTEM RESET」',
       'This wipes all local progress (level, XP, missions, coins). This cannot be undone.',
       [
         { text: 'CANCEL', style: 'cancel' },
@@ -45,16 +46,14 @@ export default function ProfileScreen() {
   };
 
   return (
-    <Screen scroll>
-      <Text variant="title" color={colors.text}>PLAYER</Text>
-
+    <Screen scroll title="PLAYER" accent={rc}>
       <Panel label="IDENTITY" accent={rc} style={styles.block}>
-        <Text variant="title" color={colors.text}>{profile.displayName.toUpperCase()}</Text>
+        <Text variant="title" color={colors.text} glowColor={withAlpha(rc, 0.3)}>{profile.displayName.toUpperCase()}</Text>
         <View style={styles.rankRow}>
-          <View style={[styles.dot, { backgroundColor: rc }]} />
+          <View style={[styles.dot, { backgroundColor: rc, shadowColor: rc }]} />
           <Text variant="label" color={rc}>{profile.rank} · LVL {profile.level}</Text>
         </View>
-        <Text variant="caption" color={colors.gold} style={{ marginTop: 6 }}>
+        <Text variant="caption" color={colors.monarchGold} style={{ marginTop: 6 }}>
           {title ? `TITLE: ${title.name}` : 'NO TITLE EQUIPPED'}
         </Text>
 
@@ -66,45 +65,41 @@ export default function ProfileScreen() {
         </View>
       </Panel>
 
-      <SectionHeader title="SYSTEMS" accent={colors.energy} />
-      <View style={styles.linkGrid}>
+      <SectionHeader title="SYSTEMS" accent={colors.systemBlue} />
+      <View style={styles.grid}>
         {LINKS.map((l) => {
           const Icon = l.icon;
           return (
-            <Pressable key={l.label} style={styles.linkCard} onPress={() => router.push(l.route as never)}>
-              <Icon size={19} color={l.color} />
-              <Text variant="mono" color={colors.text} style={{ flex: 1 }}>{l.label}</Text>
-              <ChevronRight size={16} color={colors.textDim} />
-            </Pressable>
+            <Row
+              key={l.label}
+              label={l.label}
+              icon={<Icon size={19} color={l.color} />}
+              accent={l.color}
+              onPress={() => router.push(l.route as never)}
+            />
           );
         })}
       </View>
 
-      <SectionHeader title="SETTINGS" accent={colors.violet} />
-      <Panel padded={false}>
-        <View style={styles.settingRow}>
-          <View style={styles.settingLeft}>
-            <Shield size={18} color={colors.violetBright} />
-            <View>
-              <Text variant="mono" color={colors.text}>PRIVACY MODE</Text>
-              <Text variant="caption" color={colors.textDim}>
-                Hide Shadow Habit labels & use neutral notifications
-              </Text>
-            </View>
-          </View>
+      <SectionHeader title="SETTINGS" accent={colors.shadowViolet} />
+      <Row
+        label="PRIVACY MODE"
+        sub="Hide Shadow Habit labels & use neutral notifications"
+        icon={<Shield size={18} color={colors.violetBright} />}
+        right={
           <Switch
             value={profile.privacyMode}
             onValueChange={(v) => { haptics.tick(); setPrivacyMode(v); }}
-            trackColor={{ false: colors.surface2, true: withAlpha(colors.violet, 0.6) }}
+            trackColor={{ false: colors.surface2, true: withAlpha(colors.shadowViolet, 0.6) }}
             thumbColor={profile.privacyMode ? colors.violetBright : colors.textDim}
           />
-        </View>
-      </Panel>
+        }
+      />
 
-      <SectionHeader title="CLOUD SYNC" accent={colors.cyan} />
+      <SectionHeader title="CLOUD SYNC" accent={colors.phantomCyan} />
       <Panel style={styles.block}>
         <View style={styles.settingLeft}>
-          {authUser ? <Cloud size={18} color={colors.cyan} /> : <CloudOff size={18} color={colors.textDim} />}
+          {authUser ? <Cloud size={18} color={colors.phantomCyan} /> : <CloudOff size={18} color={colors.textDim} />}
           <View style={{ flex: 1 }}>
             <Text variant="mono" color={colors.text}>
               {authUser ? 'SIGNED IN' : 'OFFLINE (LOCAL ONLY)'}
@@ -115,7 +110,7 @@ export default function ProfileScreen() {
           </View>
         </View>
         {authUser ? (
-          <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.base }}>
+          <View style={styles.syncBtns}>
             <Button label="SYNC NOW" variant="secondary" onPress={() => { void pushSnapshot(); }} style={{ flex: 1 }} />
             <Button label="SIGN OUT" variant="ghost" onPress={() => { void signOut(); }} style={{ flex: 1 }} />
           </View>
@@ -133,12 +128,15 @@ export default function ProfileScreen() {
       <SyncStatus />
 
       <SectionHeader title="DANGER ZONE" accent={colors.crimson} />
-      <Pressable style={styles.resetBtn} onPress={confirmReset}>
-        <RotateCcw size={18} color={colors.crimson} />
-        <Text variant="heading" color={colors.crimson}>RESET SYSTEM</Text>
-      </Pressable>
-
-      <View style={{ height: 32 }} />
+      <Button
+        label="RESET SYSTEM"
+        variant="danger"
+        size="lg"
+        full
+        icon={<RotateCcw size={18} color={colors.crimson} />}
+        onPress={confirmReset}
+        haptic="heavy"
+      />
     </Screen>
   );
 }
@@ -153,29 +151,24 @@ function Stat({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
-  block: { marginTop: spacing.base },
+  block: { marginTop: spacing.sm },
   rankRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 },
-  dot: { width: 6, height: 6, borderRadius: 3 },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    // Rank glow
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 6,
+    elevation: 4,
+  },
   statsRow: {
     flexDirection: 'row', justifyContent: 'space-between', marginTop: spacing.lg,
-    paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: withAlpha(colors.border, 0.6),
+    paddingTop: spacing.md, borderTopWidth: 1, borderTopColor: withAlpha(colors.systemBlue, 0.15),
   },
   stat: { gap: 3 },
-  linkGrid: { gap: spacing.sm },
-  linkCard: {
-    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
-    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border,
-    borderRadius: radius.base, padding: spacing.base,
-  },
-  settingRow: {
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    padding: spacing.base,
-  },
+  grid: { gap: spacing.sm },
   settingLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, flex: 1, paddingRight: 8 },
-  resetBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
-    borderWidth: 1, borderColor: withAlpha(colors.crimson, 0.5),
-    backgroundColor: withAlpha(colors.crimson, 0.08),
-    borderRadius: radius.base, paddingVertical: spacing.base,
-  },
+  syncBtns: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.base },
 });

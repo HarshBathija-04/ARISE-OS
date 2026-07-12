@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { View, StyleSheet, TextInput, Pressable } from 'react-native';
+import { View, StyleSheet, Pressable } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
-import { Screen, Text, Button } from '@/components/ui';
-import { colors, radius, spacing } from '@/theme';
+import { Mail, Lock, User } from 'lucide-react-native';
+import { Screen, Text, Button, Input } from '@/components/ui';
+import { colors, radius, spacing, withAlpha } from '@/theme';
 import { useAuthStore } from '@/store/authStore';
 import { isApiEnabled } from '@/services/api/client';
 import { pullSnapshot } from '@/services/sync/snapshot';
@@ -28,6 +29,7 @@ export default function LoginScreen() {
   const signUp = useAuthStore((s) => s.signUp);
 
   const busy = status === 'authenticating';
+  const canSubmit = isApiEnabled && email.trim().length > 0 && password.length > 0 && !busy;
 
   async function submit() {
     try { haptics.tap(); } catch {}
@@ -41,12 +43,29 @@ export default function LoginScreen() {
     }
   }
 
+  const footer = (
+    <>
+      <Button
+        label={busy ? 'PLEASE WAIT…' : mode === 'login' ? 'LOG IN' : 'CREATE ACCOUNT'}
+        onPress={submit}
+        size="lg"
+        loading={busy}
+        disabled={!canSubmit}
+        full
+      />
+      <Pressable onPress={() => router.replace('/(tabs)/system')} style={styles.skip} hitSlop={8}>
+        <Text variant="caption" dim center>Continue offline →</Text>
+      </Pressable>
+    </>
+  );
+
   return (
-    <Screen scroll>
+    <Screen scroll avoidKeyboard footer={footer}>
       <Stack.Screen options={{ title: 'Cloud Sync', headerShown: false }} />
+
       <View style={styles.header}>
         <Text variant="label" color={colors.cyan} center>SOLO OS</Text>
-        <Text variant="heading" color={colors.text} center>
+        <Text variant="title" color={colors.text} center>
           {mode === 'login' ? 'SYSTEM LOGIN' : 'CREATE ACCOUNT'}
         </Text>
         <Text variant="caption" dim center style={styles.sub}>
@@ -64,10 +83,35 @@ export default function LoginScreen() {
 
       <View style={styles.form}>
         {mode === 'register' && (
-          <Field label="DISPLAY NAME" value={name} onChange={setName} placeholder="Harsh" />
+          <Input
+            label="DISPLAY NAME"
+            value={name}
+            onChangeText={setName}
+            placeholder="What should the System call you?"
+            icon={<User size={18} color={colors.textDim} />}
+            autoCapitalize="words"
+          />
         )}
-        <Field label="EMAIL" value={email} onChange={setEmail} placeholder="you@example.com" keyboardType="email-address" />
-        <Field label="PASSWORD" value={password} onChange={setPassword} placeholder="••••••••" secure />
+        <Input
+          label="EMAIL"
+          value={email}
+          onChangeText={setEmail}
+          placeholder="you@example.com"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+          icon={<Mail size={18} color={colors.textDim} />}
+        />
+        <Input
+          label="PASSWORD"
+          value={password}
+          onChangeText={setPassword}
+          placeholder="Enter your password"
+          secure
+          autoCapitalize="none"
+          autoCorrect={false}
+          icon={<Lock size={18} color={colors.textDim} />}
+        />
 
         {error && (
           <Text variant="caption" color={colors.crimson} center style={{ marginTop: 4 }}>
@@ -75,53 +119,13 @@ export default function LoginScreen() {
           </Text>
         )}
 
-        <Button
-          label={busy ? 'PLEASE WAIT…' : mode === 'login' ? 'LOG IN' : 'REGISTER'}
-          onPress={submit}
-          disabled={busy || !isApiEnabled}
-          full
-          style={{ marginTop: spacing.base }}
-        />
-
-        <Pressable onPress={() => setMode((m) => (m === 'login' ? 'register' : 'login'))} style={styles.switch}>
+        <Pressable onPress={() => setMode((m) => (m === 'login' ? 'register' : 'login'))} style={styles.switch} hitSlop={8}>
           <Text variant="caption" color={colors.cyan} center>
             {mode === 'login' ? 'No account? Create one' : 'Have an account? Log in'}
           </Text>
         </Pressable>
-
-        <Pressable onPress={() => router.replace('/(tabs)/system')} style={styles.skip}>
-          <Text variant="caption" dim center>Continue offline →</Text>
-        </Pressable>
       </View>
     </Screen>
-  );
-}
-
-function Field({
-  label, value, onChange, placeholder, secure, keyboardType,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder: string;
-  secure?: boolean;
-  keyboardType?: 'email-address' | 'default';
-}) {
-  return (
-    <View style={styles.field}>
-      <Text variant="caption" color={colors.textDim}>{label}</Text>
-      <TextInput
-        value={value}
-        onChangeText={onChange}
-        placeholder={placeholder}
-        placeholderTextColor={colors.textFaint}
-        secureTextEntry={secure}
-        autoCapitalize="none"
-        autoCorrect={false}
-        keyboardType={keyboardType ?? 'default'}
-        style={styles.input}
-      />
-    </View>
   );
 }
 
@@ -131,23 +135,12 @@ const styles = StyleSheet.create({
   warn: {
     marginTop: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.gold,
-    borderRadius: radius.base,
+    borderColor: withAlpha(colors.gold, 0.5),
+    borderRadius: radius.md,
     padding: spacing.md,
-    backgroundColor: colors.surface,
+    backgroundColor: withAlpha(colors.gold, 0.08),
   },
-  form: { marginTop: spacing.xl, gap: spacing.md },
-  field: { gap: 6 },
-  input: {
-    borderWidth: 1,
-    borderColor: colors.borderBright,
-    borderRadius: radius.base,
-    backgroundColor: colors.surface,
-    color: colors.text,
-    paddingHorizontal: spacing.base,
-    paddingVertical: spacing.md,
-    fontSize: 16,
-  },
+  form: { marginTop: spacing.xl, gap: spacing.base },
   switch: { marginTop: spacing.base, padding: spacing.sm },
-  skip: { marginTop: 2, padding: spacing.sm },
+  skip: { paddingTop: spacing.xs },
 });

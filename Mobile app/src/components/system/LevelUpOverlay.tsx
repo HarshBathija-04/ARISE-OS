@@ -14,7 +14,10 @@ import type { RankName } from '@/types';
 
 const { height } = Dimensions.get('window');
 
-/** Full-screen cinematic LEVEL INCREASE overlay. */
+/**
+ * Solo Leveling「LEVEL INCREASE」ceremony — full-screen cinematic overlay
+ * with system-blue burst, monarch gold level numbers, and vertical light beam.
+ */
 export function LevelUpOverlay() {
   const payload = useOverlayStore((s) => s.levelUp);
   const clear = useOverlayStore((s) => s.clearLevelUp);
@@ -34,6 +37,7 @@ function LevelUpContent({
   const newScale = useSharedValue(0.4);
   const newOpacity = useSharedValue(0);
   const ring = useSharedValue(0);
+  const beamOpacity = useSharedValue(0);
   const rc = rankColor(payload.newRank as RankName);
 
   useEffect(() => {
@@ -48,7 +52,15 @@ function LevelUpContent({
         withTiming(1, { duration: 200 }),
       ),
     );
-  }, [oldOpacity, newOpacity, newScale, ring]);
+    // Vertical light beam surge
+    beamOpacity.value = withDelay(
+      400,
+      withSequence(
+        withTiming(0.5, { duration: 400 }),
+        withTiming(0.15, { duration: 800 }),
+      ),
+    );
+  }, [oldOpacity, newOpacity, newScale, ring, beamOpacity]);
 
   const oldStyle = useAnimatedStyle(() => ({ opacity: oldOpacity.value }));
   const newStyle = useAnimatedStyle(() => ({
@@ -59,25 +71,56 @@ function LevelUpContent({
     opacity: 0.6 - ring.value * 0.6,
     transform: [{ scale: 0.5 + ring.value * 1.4 }],
   }));
+  const beamStyle = useAnimatedStyle(() => ({
+    opacity: beamOpacity.value,
+  }));
 
   return (
     <Animated.View entering={FadeIn.duration(300)} style={StyleSheet.absoluteFill}>
       <Pressable style={styles.backdrop} onPress={onDismiss}>
+        {/* Gradient: system-blue to void */}
         <LinearGradient
-          colors={[withAlpha(rc, 0.2), colors.bg, colors.bg]}
+          colors={[
+            withAlpha(colors.systemBlue, 0.2),
+            withAlpha(colors.shadowViolet, 0.08),
+            colors.bg,
+            colors.bg,
+          ]}
           style={StyleSheet.absoluteFill}
         />
 
+        {/* Vertical light beam */}
+        <Animated.View style={[styles.beam, beamStyle]}>
+          <LinearGradient
+            colors={['transparent', withAlpha(colors.systemBlue, 0.6), 'transparent']}
+            style={StyleSheet.absoluteFill}
+            start={{ x: 0.5, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+          />
+        </Animated.View>
+
         <View style={styles.center}>
-          <Text variant="label" color={colors.cyan}>
-            SYSTEM EVENT
+          <Text variant="label" color={colors.phantomCyan}>
+            {'「'}SYSTEM EVENT{'」'}
           </Text>
-          <Text variant="title" color={rc} glowColor={rc} style={styles.header}>
-            LEVEL INCREASE
+          <Text
+            variant="systemWindow"
+            color={colors.systemBlue}
+            glowColor={withAlpha(colors.systemBlue, 0.8)}
+            style={styles.header}
+          >
+            {'「'}LEVEL INCREASE{'」'}
           </Text>
 
           <View style={styles.levelStack}>
-            <Animated.View style={[styles.ring, { borderColor: rc }, ringStyle]} />
+            {/* Expanding ring — system blue */}
+            <Animated.View
+              style={[
+                styles.ring,
+                { borderColor: colors.systemBlue },
+                ringStyle,
+              ]}
+            />
             <Animated.View style={oldStyle}>
               <Text variant="readout" color={colors.textDim} style={styles.oldLevel}>
                 {payload.oldLevel}
@@ -89,8 +132,8 @@ function LevelUpContent({
             <Animated.View style={newStyle}>
               <Text
                 variant="readout"
-                color={colors.text}
-                glowColor={rc}
+                color={colors.monarchGold}
+                glowColor={withAlpha(colors.monarchGold, 0.6)}
                 style={styles.newLevel}
               >
                 {payload.newLevel}
@@ -100,8 +143,8 @@ function LevelUpContent({
 
           {payload.rankChanged && (
             <Animated.View entering={FadeIn.delay(1400)}>
-              <Text variant="heading" color={rc} glowColor={rc}>
-                RANK: {payload.newRank}
+              <Text variant="heading" color={rc} glowColor={withAlpha(rc, 0.6)}>
+                {'「'}RANK: {payload.newRank}{'」'}
               </Text>
             </Animated.View>
           )}
@@ -124,7 +167,14 @@ function LevelUpContent({
 }
 
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: withAlpha(colors.bg, 0.96) },
+  backdrop: { flex: 1, backgroundColor: withAlpha(colors.bg, 0.97) },
+  beam: {
+    position: 'absolute',
+    left: '48%',
+    width: 4,
+    top: 0,
+    bottom: 0,
+  },
   center: {
     flex: 1,
     alignItems: 'center',
@@ -132,7 +182,7 @@ const styles = StyleSheet.create({
     gap: 14,
     paddingTop: height * 0.05,
   },
-  header: { fontSize: 30, letterSpacing: 5, marginBottom: 10 },
+  header: { fontSize: 28, letterSpacing: 6, marginBottom: 10 },
   levelStack: { alignItems: 'center', gap: 6, marginVertical: 10 },
   ring: {
     position: 'absolute',
@@ -141,6 +191,11 @@ const styles = StyleSheet.create({
     borderRadius: 80,
     borderWidth: 2,
     top: -20,
+    shadowColor: colors.systemBlue,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 20,
+    elevation: 8,
   },
   oldLevel: { fontSize: 44 },
   newLevel: { fontSize: 72, lineHeight: 78 },

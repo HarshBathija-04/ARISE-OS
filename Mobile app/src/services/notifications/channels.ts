@@ -12,7 +12,8 @@ export type NotificationChannelId =
   | 'STREAK_WARNINGS'
   | 'FOCUS'
   | 'RECOVERY'
-  | 'SYSTEM_EVENTS';
+  | 'SYSTEM_EVENTS'
+  | 'TIMETABLE';
 
 export interface ChannelDef {
   id: NotificationChannelId;
@@ -58,6 +59,13 @@ export const CHANNELS: ChannelDef[] = [
     description: 'Level ups, achievements, boss events, evening reviews.',
     importance: Notifications.AndroidImportance.DEFAULT,
     color: '#34D399',
+  },
+  {
+    id: 'TIMETABLE',
+    name: 'Timetable Alarms',
+    description: 'Exact-time alarms and early warnings for your schedule.',
+    importance: Notifications.AndroidImportance.HIGH,
+    color: '#4A7AFF', // systemBlue
   },
 ];
 

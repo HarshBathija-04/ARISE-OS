@@ -13,13 +13,14 @@
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { CHANNELS, type NotificationChannelId } from './channels';
+import type { TimetableBlock } from '@/constants/timetable';
 
 // Banner + list, no sound by default — this is a calm system, not a nag.
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowBanner: true,
     shouldShowList: true,
-    shouldPlaySound: false,
+    shouldPlaySound: true, // We want alarm sound for timetable? Let's keep default handler as is, timetable uses channel importance for sound on Android.
     shouldSetBadge: false,
   }),
 });
@@ -120,13 +121,12 @@ export interface ScheduleConfig {
   streakWarningTime: string; // "20:00"
   eveningReviewTime: string; // "21:00"
   privacyMode: boolean;
+  timetableBlocks?: TimetableBlock[];
 }
 
 /** Cancel everything SOLO OS has scheduled. */
 export async function cancelAllSchedules(): Promise<void> {
-  for (const id of Object.values(SCHEDULE_IDS)) {
-    await silently(() => Notifications.cancelScheduledNotificationAsync(id));
-  }
+  await silently(() => Notifications.cancelAllScheduledNotificationsAsync());
 }
 
 /**
@@ -177,6 +177,37 @@ export async function applySchedule(cfg: ScheduleConfig): Promise<void> {
       body: 'The day cycle is closing. Review your deltas and prep tomorrow.',
       identifier: SCHEDULE_IDS.eveningReview,
     });
+  }
+
+  if (cfg.channels.TIMETABLE && cfg.timetableBlocks) {
+    for (const block of cfg.timetableBlocks) {
+      // 1. Exact time alarm
+      await scheduleDaily({
+        hour: block.startHour,
+        minute: block.startMin,
+        channelId: 'TIMETABLE',
+        title: 'SYSTEM // TASK STARTING',
+        body: `It is time for: ${block.activity}`,
+        identifier: `soloos-timetable-start-${block.id}`,
+      });
+
+      // 2. Early warning (5 mins before)
+      let warnHour = block.startHour;
+      let warnMin = block.startMin - 5;
+      if (warnMin < 0) {
+        warnMin += 60;
+        warnHour -= 1;
+        if (warnHour < 0) warnHour += 24;
+      }
+      await scheduleDaily({
+        hour: warnHour,
+        minute: warnMin,
+        channelId: 'TIMETABLE',
+        title: 'SYSTEM // UPCOMING TASK',
+        body: `In 5 mins: ${block.activity}`,
+        identifier: `soloos-timetable-warn-${block.id}`,
+      });
+    }
   }
 }
 

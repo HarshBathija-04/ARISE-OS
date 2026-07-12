@@ -14,17 +14,23 @@ interface ProgressBarProps {
   height?: number;
   glow?: boolean;
   animated?: boolean;
+  /** Show 25% tick segment marks (Solo Leveling HP/MP bar style). */
+  segmented?: boolean;
   style?: ViewStyle;
 }
 
-/** Glowing animated energy line used for XP and progress. */
+/**
+ * Solo Leveling HP/MP bar — a glowing energy line with optional segment
+ * tick marks, an inner bright core, and a bloom glow on the fill tip.
+ */
 export function ProgressBar({
   progress,
   color = colors.energyBright,
-  trackColor = colors.surface2,
+  trackColor,
   height = 8,
   glow = true,
   animated = true,
+  segmented = false,
   style,
 }: ProgressBarProps) {
   const pct = Math.max(0, Math.min(1, progress));
@@ -43,14 +49,47 @@ export function ProgressBar({
   const fillStyle = useAnimatedStyle(() => ({ width: `${w.value * 100}%` }));
   const glowStyle = useAnimatedStyle(() => ({ opacity: 0.4 + shimmer.value * 0.5 }));
 
+  const resolvedTrackColor = trackColor ?? withAlpha(colors.systemBlue, 0.12);
+
   return (
-    <View style={[styles.track, { height, borderRadius: height / 2, backgroundColor: trackColor }, style]}>
+    <View
+      style={[
+        styles.track,
+        {
+          height,
+          borderRadius: height / 2,
+          backgroundColor: resolvedTrackColor,
+          borderWidth: 1,
+          borderColor: withAlpha(colors.systemBlue, 0.15),
+        },
+        style,
+      ]}
+    >
+      {/* Segment tick marks at 25%, 50%, 75% */}
+      {segmented && (
+        <>
+          <View style={[styles.tick, { left: '25%', height: height - 2 }]} />
+          <View style={[styles.tick, { left: '50%', height: height - 2 }]} />
+          <View style={[styles.tick, { left: '75%', height: height - 2 }]} />
+        </>
+      )}
+
       <Animated.View style={[styles.fill, { borderRadius: height / 2 }, fillStyle]}>
         <LinearGradient
-          colors={[withAlpha(color, 0.7), color]}
+          colors={[withAlpha(color, 0.6), color]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={StyleSheet.absoluteFill}
+        />
+        {/* Inner bright core line */}
+        <View
+          style={[
+            styles.coreLine,
+            {
+              top: Math.floor(height / 2) - 1,
+              backgroundColor: withAlpha('#FFFFFF', 0.3),
+            },
+          ]}
         />
         {glow && (
           <Animated.View
@@ -60,8 +99,8 @@ export function ProgressBar({
                 borderRadius: height / 2,
                 shadowColor: color,
                 shadowOpacity: 1,
-                shadowRadius: 8,
-                elevation: 6,
+                shadowRadius: 10,
+                elevation: 8,
               },
               glowStyle,
             ]}
@@ -75,4 +114,17 @@ export function ProgressBar({
 const styles = StyleSheet.create({
   track: { width: '100%', overflow: 'hidden' },
   fill: { height: '100%', overflow: 'hidden' },
+  coreLine: {
+    position: 'absolute',
+    left: 2,
+    right: 2,
+    height: 1,
+  },
+  tick: {
+    position: 'absolute',
+    top: 0,
+    width: 1,
+    backgroundColor: withAlpha(colors.bg, 0.4),
+    zIndex: 1,
+  },
 });

@@ -1,5 +1,11 @@
 /**
  * SOLO OS — Theme barrel + layout tokens.
+ *
+ * Solo Leveling–inspired utilities:
+ *  - `systemGlow()` – the iconic blue window-edge glow
+ *  - `shadowAura()` – violet ambient aura for monarch energy
+ *  - `statusWindowBorder()` – double-line system window borders
+ *
  * Import `theme` for a single object, or import individual pieces.
  */
 import { ViewStyle } from 'react-native';
@@ -46,6 +52,37 @@ export function glow(color: string, intensity: 'soft' | 'medium' | 'strong' = 'm
   };
 }
 
+/**
+ * System Window glow — the iconic Solo Leveling blue border glow.
+ * Used on panel edges and active elements.
+ */
+export function systemGlow(intensity: 'soft' | 'medium' | 'strong' = 'medium'): ViewStyle {
+  return glow(colors.systemBlue, intensity);
+}
+
+/**
+ * Shadow Aura — violet ambient glow for monarch-energy themed elements.
+ */
+export function shadowAura(intensity: 'soft' | 'medium' | 'strong' = 'soft'): ViewStyle {
+  return glow(colors.shadowViolet, intensity);
+}
+
+/**
+ * Status Window border style — the double-line system window look
+ * from Solo Leveling's floating panels. Outer hairline + inner glow.
+ */
+export function statusWindowBorder(accent: string = colors.systemBlue): ViewStyle {
+  return {
+    borderWidth: 1,
+    borderColor: withAlpha(accent, 0.4),
+    shadowColor: accent,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 4,
+  };
+}
+
 export const theme = {
   colors,
   spacing,
@@ -55,9 +92,19 @@ export const theme = {
   letterSpacing,
   text: textPresets,
   glow,
+  systemGlow,
+  shadowAura,
+  statusWindowBorder,
   withAlpha,
 } as const;
 
 export type Theme = typeof theme;
 export { colors, withAlpha, fontFamily, fontSize, letterSpacing, textPresets };
 export { rarityColor } from './colors';
+export {
+  scale,
+  moderateScale,
+  useResponsive,
+  breakpoints,
+  type Responsive,
+} from './responsive';

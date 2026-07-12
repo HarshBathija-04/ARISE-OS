@@ -23,6 +23,7 @@ const CHANNEL_ACCENT: Record<NotificationChannelId, string> = {
   FOCUS: colors.cyan,
   RECOVERY: colors.violetBright,
   SYSTEM_EVENTS: colors.green,
+  TIMETABLE: colors.systemBlue,
 };
 
 export default function NotificationSettingsScreen() {

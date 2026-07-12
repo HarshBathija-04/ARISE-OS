@@ -38,6 +38,12 @@ export interface CriticalImpactPayload {
   bossName: string;
 }
 
+export interface TaskAlarmPayload {
+  blockId: string;
+  activity: string;
+  category: string;
+}
+
 interface OverlayState {
   levelUp: LevelUpPayload | null;
   achievement: AchievementPayload | null;
@@ -45,15 +51,18 @@ interface OverlayState {
   achievementQueue: AchievementPayload[];
   milestone: MilestonePayload | null;
   criticalImpact: CriticalImpactPayload | null;
+  taskAlarm: TaskAlarmPayload | null;
 
   showLevelUp: (p: LevelUpPayload) => void;
   showAchievement: (p: AchievementPayload) => void;
   showMilestone: (p: MilestonePayload) => void;
   showCriticalImpact: (p: CriticalImpactPayload) => void;
+  showTaskAlarm: (p: TaskAlarmPayload) => void;
   clearLevelUp: () => void;
   clearAchievement: () => void;
   clearMilestone: () => void;
   clearCriticalImpact: () => void;
+  clearTaskAlarm: () => void;
   /** Convenience: react to a completion outcome (level-up + achievements). */
   handleCompletion: (o: CompletionOutcome) => void;
   /** Evaluate achievements from current store data; queue any new unlocks. */
@@ -88,14 +97,17 @@ export const useOverlayStore = create<OverlayState>((set, get) => ({
   achievementQueue: [],
   milestone: null,
   criticalImpact: null,
+  taskAlarm: null,
 
   showLevelUp: (p) => set({ levelUp: p }),
   showAchievement: (p) => set({ achievement: p }),
   showMilestone: (p) => set({ milestone: p }),
   showCriticalImpact: (p) => set({ criticalImpact: p }),
+  showTaskAlarm: (p) => set({ taskAlarm: p }),
   clearLevelUp: () => set({ levelUp: null }),
   clearMilestone: () => set({ milestone: null }),
   clearCriticalImpact: () => set({ criticalImpact: null }),
+  clearTaskAlarm: () => set({ taskAlarm: null }),
 
   clearAchievement: () =>
     set((s) => {

@@ -1,12 +1,13 @@
 /**
  * SOLO OS — Typography system.
  *
- * Two families:
- *  - `mono`  : system / data readouts (levels, XP, codes) — feels like a terminal.
- *  - `sans`  : body / descriptions.
+ * Solo Leveling–inspired:
+ *  - `mono` : System readouts, 「SYSTEM」 messages — cold terminal.
+ *  - `sans` : Body / descriptions.
+ *  - `systemWindow`: Authoritarian System window headers with wide tracking.
  *
- * We use the platform default fonts (no custom font files required to run),
- * but centralize sizes, weights, spacing so the "system UI" feel is consistent.
+ * We use platform default fonts (no custom font files required to run),
+ * but centralize sizes, weights, spacing so the "System" feel is consistent.
  */
 import { Platform, TextStyle } from 'react-native';
 
@@ -45,6 +46,8 @@ export const letterSpacing = {
   wide: 1,
   wider: 2,
   widest: 4,
+  /** Extra-wide for 「SYSTEM」 announcements. */
+  system: 6,
 } as const;
 
 /** Named text presets used throughout the UI. */
@@ -54,6 +57,13 @@ export const textPresets = {
     fontFamily: fontFamily.mono,
     fontSize: fontSize['2xl'],
     letterSpacing: letterSpacing.widest,
+    fontWeight: '700',
+  } as TextStyle,
+  /** 「SYSTEM」 window titles — authoritarian, cold, wide. */
+  systemWindow: {
+    fontFamily: fontFamily.mono,
+    fontSize: fontSize.xl,
+    letterSpacing: letterSpacing.system,
     fontWeight: '700',
   } as TextStyle,
   /** Section labels like "DAILY MISSIONS". */

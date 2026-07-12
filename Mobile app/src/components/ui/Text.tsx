@@ -3,6 +3,7 @@ import { colors, fontFamily, fontSize, letterSpacing } from '@/theme';
 
 type Variant =
   | 'systemTitle'
+  | 'systemWindow'
   | 'title'
   | 'heading'
   | 'label'
@@ -17,6 +18,8 @@ interface TextProps extends RNTextProps {
   dim?: boolean;
   center?: boolean;
   glowColor?: string;
+  /** Wrap text in Solo Leveling 「」 system brackets. */
+  brackets?: boolean;
 }
 
 const variantStyle: Record<Variant, TextStyle> = {
@@ -24,6 +27,12 @@ const variantStyle: Record<Variant, TextStyle> = {
     fontFamily: fontFamily.mono,
     fontSize: fontSize['2xl'],
     letterSpacing: letterSpacing.widest,
+    fontWeight: '700',
+  },
+  systemWindow: {
+    fontFamily: fontFamily.mono,
+    fontSize: fontSize.xl,
+    letterSpacing: letterSpacing.system,
     fontWeight: '700',
   },
   title: {
@@ -66,22 +75,36 @@ const variantStyle: Record<Variant, TextStyle> = {
   },
 };
 
-/** Themed text. Defaults to cold-white body. */
+/** Themed text. Defaults to cold-white body. Solo Leveling double-shadow depth on glow. */
 export function Text({
   variant = 'body',
   color,
   dim,
   center,
   glowColor,
+  brackets,
   style,
+  children,
   ...rest
 }: TextProps) {
   const resolved = color ?? (dim ? colors.textSecondary : colors.text);
+
+  // Solo Leveling–style double-layer text shadow for depth
   const glowStyle: TextStyle = glowColor
-    ? { textShadowColor: glowColor, textShadowRadius: 12, textShadowOffset: { width: 0, height: 0 } }
+    ? {
+        textShadowColor: glowColor,
+        textShadowRadius: 16,
+        textShadowOffset: { width: 0, height: 0 },
+      }
     : {};
+
+  const content = brackets ? `「${children}」` : children;
+
   return (
     <RNText
+      // Respect the user's OS text-size preference, but cap it so large
+      // accessibility sizes can't shatter tight terminal layouts.
+      maxFontSizeMultiplier={1.3}
       {...rest}
       style={[
         variantStyle[variant],
@@ -90,6 +113,8 @@ export function Text({
         glowStyle,
         style,
       ]}
-    />
+    >
+      {content}
+    </RNText>
   );
 }

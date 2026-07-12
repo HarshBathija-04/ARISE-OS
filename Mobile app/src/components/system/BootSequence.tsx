@@ -14,27 +14,27 @@ const { width } = Dimensions.get('window');
 interface BootLine {
   text: string;
   delay: number;
-  kind?: 'normal' | 'warn' | 'title' | 'player' | 'ok';
+  kind?: 'normal' | 'warn' | 'title' | 'player' | 'ok' | 'system';
 }
 
-// ~9.5s total sequence.
+// ~9.5s total sequence — Solo Leveling 「SYSTEM」 awakening.
 const LINES: BootLine[] = [
-  { text: 'SOLO OS', delay: 200, kind: 'title' },
-  { text: 'CORE INITIALIZATION', delay: 900 },
+  { text: '「SOLO OS」', delay: 200, kind: 'title' },
+  { text: '「SYSTEM」 CORE INITIALIZATION', delay: 900, kind: 'system' },
   { text: 'PLAYER SIGNAL DETECTED', delay: 1500 },
-  { text: 'ANALYSING CURRENT STATE', delay: 2100 },
+  { text: '「SYSTEM」 ANALYSING CURRENT STATE', delay: 2100, kind: 'system' },
   { text: 'CALIBRATING ATTRIBUTE MATRIX', delay: 2700 },
   { text: 'IDENTIFYING PRIMARY OBJECTIVES', delay: 3300 },
-  { text: 'DISCIPLINE INSTABILITY DETECTED', delay: 4000, kind: 'warn' },
-  { text: 'FOCUS VARIANCE DETECTED', delay: 4500, kind: 'warn' },
-  { text: 'PHYSICAL DEVELOPMENT REQUIRED', delay: 5000, kind: 'warn' },
+  { text: '⚠ DISCIPLINE INSTABILITY DETECTED', delay: 4000, kind: 'warn' },
+  { text: '⚠ FOCUS VARIANCE DETECTED', delay: 4500, kind: 'warn' },
+  { text: '⚠ PHYSICAL DEVELOPMENT REQUIRED', delay: 5000, kind: 'warn' },
   { text: 'TECHNICAL GROWTH PATH IDENTIFIED', delay: 5600 },
-  { text: 'PLAYER PROFILE CREATED', delay: 6300, kind: 'ok' },
+  { text: '「SYSTEM」 PLAYER PROFILE CREATED', delay: 6300, kind: 'ok' },
   { text: 'HARSH BATHIJA', delay: 6900, kind: 'player' },
   { text: 'LEVEL 1', delay: 7300, kind: 'player' },
   { text: 'RANK: INITIATE', delay: 7600, kind: 'player' },
-  { text: 'SYSTEM LINK ESTABLISHED', delay: 8300, kind: 'ok' },
-  { text: 'SOLO OS ONLINE', delay: 9000, kind: 'title' },
+  { text: '「SYSTEM」 LINK ESTABLISHED', delay: 8300, kind: 'ok' },
+  { text: '「SOLO OS」 ONLINE', delay: 9000, kind: 'title' },
 ];
 
 const TOTAL = 9800;
@@ -42,9 +42,10 @@ const TOTAL = 9800;
 function lineColor(kind: BootLine['kind']): string {
   switch (kind) {
     case 'warn': return colors.crimson;
-    case 'ok': return colors.cyan;
-    case 'player': return colors.gold;
+    case 'ok': return colors.phantomCyan;
+    case 'player': return colors.monarchGold;
     case 'title': return colors.energyBright;
+    case 'system': return colors.systemBlue;
     default: return colors.textSecondary;
   }
 }
@@ -78,6 +79,7 @@ function BootLineView({ line, index }: { line: BootLine; index: number }) {
 
   const isTitle = line.kind === 'title';
   const isPlayer = line.kind === 'player';
+  const isSystem = line.kind === 'system';
 
   return (
     <Animated.View style={[styles.lineRow, style]}>
@@ -89,7 +91,7 @@ function BootLineView({ line, index }: { line: BootLine; index: number }) {
       <Text
         variant={isTitle ? 'title' : isPlayer ? 'heading' : 'mono'}
         color={lineColor(line.kind)}
-        glowColor={isTitle || isPlayer ? lineColor(line.kind) : undefined}
+        glowColor={isTitle || isPlayer || isSystem ? lineColor(line.kind) : undefined}
         style={isTitle ? styles.titleText : undefined}
       >
         {line.text}
@@ -134,23 +136,32 @@ export function BootSequence({ onComplete }: { onComplete: () => void }) {
 
   const scanStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: scan.value * 620 - 60 }],
-    opacity: 0.5 - scan.value * 0.3,
+    opacity: 0.6 - scan.value * 0.4,
   }));
   const glowStyle = useAnimatedStyle(() => ({ opacity: pulse.value }));
 
   return (
     <View style={styles.container}>
-      {/* Ambient radial glow */}
+      {/* Ambient radial glow — system blue */}
       <Animated.View style={[styles.ambient, glowStyle]}>
         <LinearGradient
-          colors={[withAlpha(colors.energy, 0.18), 'transparent']}
+          colors={[withAlpha(colors.systemBlue, 0.2), 'transparent']}
           style={StyleSheet.absoluteFill}
           start={{ x: 0.5, y: 0 }}
           end={{ x: 0.5, y: 1 }}
         />
       </Animated.View>
 
-      {/* Scan line */}
+      {/* Secondary violet ambient */}
+      <LinearGradient
+        colors={['transparent', withAlpha(colors.shadowViolet, 0.06)]}
+        style={styles.ambientBottom}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        pointerEvents="none"
+      />
+
+      {/* Scan line — thicker, system blue */}
       <Animated.View style={[styles.scanline, scanStyle]} />
 
       <View style={styles.content}>
@@ -177,12 +188,24 @@ export function BootSequence({ onComplete }: { onComplete: () => void }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
   ambient: { position: 'absolute', top: 0, left: 0, right: 0, height: 300 },
+  ambientBottom: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 200,
+  },
   scanline: {
     position: 'absolute',
     left: 0,
     width,
-    height: 2,
-    backgroundColor: withAlpha(colors.energyBright, 0.35),
+    height: 3,
+    backgroundColor: withAlpha(colors.systemBlue, 0.4),
+    shadowColor: colors.systemBlue,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 12,
+    elevation: 6,
   },
   content: {
     flex: 1,
@@ -198,9 +221,10 @@ const styles = StyleSheet.create({
     top: 56,
     right: 24,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: withAlpha(colors.systemBlue, 0.3),
     borderRadius: 6,
     paddingHorizontal: 14,
     paddingVertical: 8,
+    backgroundColor: withAlpha(colors.surface, 0.5),
   },
 });

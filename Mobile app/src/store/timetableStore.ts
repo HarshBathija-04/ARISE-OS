@@ -44,6 +44,8 @@ interface TimetableState {
   studyLogs: StudyLog[];
   /** Overtime warnings acknowledged by the user. */
   overtimeAcked: Record<string, boolean>;
+  /** Blocks that have already triggered an alarm today (id -> date string). */
+  alarmedBlocks: Record<string, string>;
   /** Date tracker to reset daily. */
   lastResetDate: string;
   /** Whether editing mode is active. */
@@ -88,6 +90,8 @@ interface TimetableState {
   toggleEditing: () => void;
   /** Log a study session. */
   logStudy: (log: Omit<StudyLog, 'id' | 'createdAt'>) => void;
+  /** Check if any block should trigger an alarm popup right now. */
+  checkAlarms: () => void;
   /** Reset to defaults. */
   resetToDefaults: () => void;
 }
@@ -99,6 +103,7 @@ export const useTimetableStore = create<TimetableState>()(
       blockStates: {},
       studyLogs: [],
       overtimeAcked: {},
+      alarmedBlocks: {},
       lastResetDate: todayIso(),
       editing: false,
       remote: false,
@@ -110,6 +115,7 @@ export const useTimetableStore = create<TimetableState>()(
           set({
             blockStates: {},
             overtimeAcked: {},
+            alarmedBlocks: {},
             lastResetDate: today,
           });
         }
@@ -279,12 +285,36 @@ export const useTimetableStore = create<TimetableState>()(
         }
       },
 
+      checkAlarms: () => {
+        const { blocks, alarmedBlocks } = get();
+        const now = new Date();
+        const today = todayIso();
+        for (const block of blocks) {
+          if (isCurrentBlock(block, now)) {
+            if (alarmedBlocks[block.id] !== today) {
+              set((s) => ({
+                alarmedBlocks: { ...s.alarmedBlocks, [block.id]: today },
+              }));
+              // Trigger overlay popup
+              // Delay require to avoid circular dependency
+              const overlayStore = require('./overlayStore').useOverlayStore;
+              overlayStore.getState().showTaskAlarm({
+                blockId: block.id,
+                activity: block.activity,
+                category: block.category,
+              });
+            }
+          }
+        }
+      },
+
       resetToDefaults: () => {
         set({
           blocks: [...DEFAULT_TIMETABLE],
           blockStates: {},
           studyLogs: [],
           overtimeAcked: {},
+          alarmedBlocks: {},
           lastResetDate: todayIso(),
         });
         get().syncSchedule();
@@ -298,6 +328,7 @@ export const useTimetableStore = create<TimetableState>()(
         blockStates: s.blockStates,
         studyLogs: s.studyLogs,
         overtimeAcked: s.overtimeAcked,
+        alarmedBlocks: s.alarmedBlocks,
         lastResetDate: s.lastResetDate,
       }),
     },

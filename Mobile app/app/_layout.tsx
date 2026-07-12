@@ -11,7 +11,9 @@ import { LevelUpOverlay } from '@/components/system/LevelUpOverlay';
 import { AchievementUnlockOverlay } from '@/components/system/AchievementUnlockOverlay';
 import { StreakMilestoneOverlay } from '@/components/system/StreakMilestoneOverlay';
 import { CriticalImpactOverlay } from '@/components/system/CriticalImpactOverlay';
+import { TaskAlarmOverlay } from '@/components/system/TaskAlarmOverlay';
 import { initSync } from '@/services/sync/bootstrap';
+import { useTimetableStore } from '@/store/timetableStore';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -23,7 +25,16 @@ export default function RootLayout() {
   useEffect(() => {
     SplashScreen.hideAsync().catch(() => {});
     const cleanup = initSync();
-    return cleanup;
+
+    // Check for alarms every 30 seconds
+    const alarmInterval = setInterval(() => {
+      useTimetableStore.getState().checkAlarms();
+    }, 30_000);
+
+    return () => {
+      cleanup();
+      clearInterval(alarmInterval);
+    };
   }, []);
 
   return (
@@ -46,6 +57,7 @@ export default function RootLayout() {
           <AchievementUnlockOverlay />
           <StreakMilestoneOverlay />
           <CriticalImpactOverlay />
+          <TaskAlarmOverlay />
         </QueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

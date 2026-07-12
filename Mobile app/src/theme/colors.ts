@@ -1,50 +1,61 @@
 /**
  * SOLO OS — Centralized color system.
  *
- * The interface should resemble a secret operating system: dark, minimal,
- * with glow used sparingly to represent energy / progression.
+ * Inspired by Solo Leveling's System Interface:
+ *  - Near-void black backgrounds
+ *  - Iconic system-blue window borders / accents (#4A7AFF)
+ *  - Shadow-violet monarch energy (#7B61FF)
+ *  - Cold, authoritarian text hierarchy
  *
  * NEVER hardcode hex values in components. Import from here (or `theme`).
  */
 
 export const colors = {
-  // ── Backgrounds ────────────────────────────────────────────────
-  bg: '#030508', // primary background (near-black)
-  bgSecondary: '#070B12', // secondary background
-  surface: '#0B111C', // panels / cards
-  surface2: '#101828', // raised surface
-  surface3: '#16203200', // transparent tint helper
-  border: '#1B2536', // hairline borders
-  borderBright: '#2A3A54', // active / focused borders
+  // ── Backgrounds (The Void) ──────────────────────────────────────
+  bg: '#020408',            // primary — near-void black
+  bgSecondary: '#060A14',   // secondary — deep space
+  surface: '#0A1228',       // panels / cards — cold blue-tinted glass
+  surface2: '#0E1A36',      // raised surface — darker dungeon blue
+  surface3: '#162040',      // elevated / hover — faint gate glow
+  border: '#1A2744',        // hairline borders — blue-tinted
+  borderBright: '#2B4A7A',  // active / focused borders — system edge
 
-  // ── Energies ───────────────────────────────────────────────────
-  energy: '#3B82F6', // Electric Blue — primary energy
-  energyBright: '#60A5FA',
-  energyDim: '#1E40AF',
-  violet: '#8B5CF6', // Deep Violet — secondary energy
-  violetBright: '#A78BFA',
-  cyan: '#22D3EE', // Focus energy
-  cyanBright: '#67E8F9',
-  crimson: '#E23A4E', // Controlled crimson — warning
-  crimsonDim: '#7F1D2A',
-  gold: '#F5C542', // Legendary
-  goldBright: '#FCD34D',
-  green: '#34D399', // success / stable states
+  // ── System Energies ─────────────────────────────────────────────
+  energy: '#4A7AFF',        // System Blue — primary (the iconic gate blue)
+  energyBright: '#6B9AFF',  // Bright system blue
+  energyDim: '#1E3A8A',     // Dim system blue
+  violet: '#7B61FF',        // Shadow Violet — monarch energy
+  violetBright: '#9D8AFF',  // Bright violet
+  cyan: '#22D3EE',          // Phantom Cyan — focus / system online
+  cyanBright: '#67E8F9',    // Bright cyan
+  crimson: '#DC2626',       // Blood crimson — danger / boss
+  crimsonDim: '#7F1D2A',    // Dim crimson
+  gold: '#F5A623',          // Sovereign Gold — legendary / rank
+  goldBright: '#FFCC44',    // Bright gold
+  green: '#34D399',         // Success / stable states
 
-  // ── Text ───────────────────────────────────────────────────────
-  text: '#E8EEF6', // cold white
-  textSecondary: '#7D8DA6', // blue grey
-  textDim: '#4A5568', // low-emphasis
-  textFaint: '#2E3646', // ghost / placeholder
+  // ── Solo Leveling Signature Colors ──────────────────────────────
+  systemBlue: '#4A7AFF',    // The System window color
+  shadowViolet: '#7B61FF',  // Shadow monarch aura
+  monarchGold: '#F5A623',   // Rank / sovereignty
+  phantomCyan: '#22D3EE',   // System online / phantom
+  dungeonGateStart: '#4A7AFF', // Dungeon gate gradient start
+  dungeonGateEnd: '#7B61FF',   // Dungeon gate gradient end
 
-  // ── Rarity ─────────────────────────────────────────────────────
-  rarityCommon: '#7D8DA6',
-  rarityRare: '#3B82F6',
-  rarityEpic: '#8B5CF6',
-  rarityLegendary: '#F5C542',
-  rarityMythic: '#E23A4E',
+  // ── Text ────────────────────────────────────────────────────────
+  text: '#E2E8F4',          // cold white with blue undertone
+  textSecondary: '#7A8FB5', // muted blue-grey
+  textDim: '#3D5278',       // low-emphasis — cold
+  textFaint: '#1E3050',     // ghost / placeholder
 
-  // ── Absolutes ──────────────────────────────────────────────────
+  // ── Rarity ──────────────────────────────────────────────────────
+  rarityCommon: '#7A8FB5',
+  rarityRare: '#4A7AFF',
+  rarityEpic: '#7B61FF',
+  rarityLegendary: '#F5A623',
+  rarityMythic: '#DC2626',
+
+  // ── Absolutes ───────────────────────────────────────────────────
   black: '#000000',
   white: '#FFFFFF',
   transparent: 'transparent',

@@ -3,7 +3,7 @@ import {
   Canvas, Path, Skia, Group, BlurMask, LinearGradient, vec,
 } from '@shopify/react-native-skia';
 import { Text } from '@/components/ui/Text';
-import { colors } from '@/theme';
+import { colors, withAlpha } from '@/theme';
 
 interface PerformanceHexProps {
   score: number; // 0..100
@@ -25,14 +25,17 @@ function hexPath(cx: number, cy: number, r: number) {
 }
 
 function scoreColor(score: number): string {
-  if (score >= 85) return colors.cyan;
-  if (score >= 70) return colors.energyBright;
-  if (score >= 50) return colors.gold;
-  if (score >= 30) return colors.violetBright;
+  if (score >= 85) return colors.phantomCyan;
+  if (score >= 70) return colors.systemBlue;
+  if (score >= 50) return colors.monarchGold;
+  if (score >= 30) return colors.shadowViolet;
   return colors.crimson;
 }
 
-/** Hexagonal Life Performance indicator with layered glow rings. */
+/**
+ * Solo Leveling hexagonal performance indicator — layered glow rings
+ * with system-blue and shadow-violet energy fills.
+ */
 export function PerformanceHex({ score, status, size = 150 }: PerformanceHexProps) {
   const cx = size / 2;
   const cy = size / 2;
@@ -48,29 +51,34 @@ export function PerformanceHex({ score, status, size = 150 }: PerformanceHexProp
   return (
     <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
       <Canvas style={{ width: size, height: size, position: 'absolute' }}>
-        {/* Outer ring */}
-        <Path path={outerPath} style="stroke" strokeWidth={1.5} color={colors.border} />
-        {/* Mid ring with subtle glow */}
+        {/* Outer ring — system border */}
+        <Path path={outerPath} style="stroke" strokeWidth={1.5} color={withAlpha(colors.systemBlue, 0.3)} />
+        {/* Mid ring with system glow */}
         <Group>
-          <Path path={midPath} style="stroke" strokeWidth={1.5} color={color} opacity={0.5} />
-          <BlurMask blur={6} style="solid" />
+          <Path path={midPath} style="stroke" strokeWidth={1.5} color={color} opacity={0.6} />
+          <BlurMask blur={8} style="solid" />
         </Group>
-        {/* Filled core */}
+        {/* Filled core — shadow energy gradient */}
         <Group>
-          <Path path={fillPath} style="fill" opacity={0.9}>
+          <Path path={fillPath} style="fill" opacity={0.85}>
             <LinearGradient
               start={vec(cx, cy - fillR)}
               end={vec(cx, cy + fillR)}
               colors={[color, colors.surface]}
             />
           </Path>
-          <BlurMask blur={12} style="normal" />
+          <BlurMask blur={14} style="normal" />
         </Group>
-        <Path path={fillPath} style="stroke" strokeWidth={1} color={color} opacity={0.8} />
+        <Path path={fillPath} style="stroke" strokeWidth={1.5} color={color} opacity={0.9} />
       </Canvas>
 
       <View style={styles.center}>
-        <Text variant="readout" color={colors.text} style={styles.scoreText}>
+        <Text
+          variant="readout"
+          color={colors.text}
+          glowColor={withAlpha(color, 0.4)}
+          style={styles.scoreText}
+        >
           {Math.round(score)}
         </Text>
         <Text variant="caption" color={color}>
