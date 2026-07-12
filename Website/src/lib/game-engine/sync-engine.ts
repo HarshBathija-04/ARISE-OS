@@ -180,7 +180,7 @@ export async function mergePostgresToSnapshot(userId: string, snapshotData: any)
     for (const q of relevantQuests) {
       if (!existingMissionIds.has(q.id)) {
         
-        let attributeRewards = [];
+        let attributeRewards: any[] = [];
         if (q.attributeXp && typeof q.attributeXp === 'object') {
           attributeRewards = Object.entries(q.attributeXp).map(([code, xp]) => ({
             code,
