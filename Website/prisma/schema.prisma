@@ -1,0 +1,850 @@
+// ─────────────────────────────────────────────────────────────
+// ASCEND//SYSTEM — Prisma schema (PostgreSQL)
+// A real-life RPG progression operating system.
+// Designed for long-term analytics: append-only logs + rolled-up reports.
+// ─────────────────────────────────────────────────────────────
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  // Pooled connection (Supabase Transaction pooler, port 6543) used by the app.
+  url       = env("DATABASE_URL")
+  // Direct connection (port 5432) used by `prisma migrate` / `prisma db push`.
+  // On Supabase these differ; locally you can point both at the same URL.
+  directUrl = env("DIRECT_URL")
+}
+
+// ─────────────────────────── ENUMS ───────────────────────────
+
+enum QuestType {
+  MAIN
+  DAILY
+  SIDE
+  EMERGENCY
+  RECOVERY
+  BOSS
+  HIDDEN
+}
+
+enum Difficulty {
+  E
+  D
+  C
+  B
+  A
+  S
+  SS
+}
+
+enum QuestStatus {
+  ACTIVE
+  COMPLETED
+  PARTIAL
+  FAILED
+  EXPIRED
+}
+
+enum AttributeKey {
+  STR // Strength
+  INT // Intelligence
+  FOC // Focus
+  DIS // Discipline
+  END // Endurance
+  CON // Consistency
+  SKL // Technical Skill
+  VIT // Vitality
+}
+
+enum SkillStatus {
+  LOCKED
+  AVAILABLE
+  IN_PROGRESS
+  MASTERED
+}
+
+enum HabitKind {
+  BUILD // good habit to reinforce
+  SHADOW // habit to reduce (private tracking)
+}
+
+enum HabitLogResult {
+  DONE // build habit performed
+  MISSED // build habit not performed
+  CLEAN // shadow habit avoided (good)
+  RELAPSE // shadow habit occurred
+}
+
+enum Rarity {
+  COMMON
+  RARE
+  EPIC
+  LEGENDARY
+  MYTHIC
+}
+
+enum BossStatus {
+  LOCKED
+  ACTIVE
+  DEFEATED
+}
+
+enum FocusCategory {
+  GATE
+  DSA
+  AIML
+  FULLSTACK
+  DATASCIENCE
+  SYSTEMDESIGN
+  PROJECT
+}
+
+enum FocusResult {
+  COMPLETE
+  PARTIAL
+  ABANDONED
+}
+
+enum CoinReason {
+  QUEST
+  FOCUS
+  ACHIEVEMENT
+  BOSS
+  STREAK
+  PENALTY
+  PURCHASE
+  MANUAL
+}
+
+enum NotificationType {
+  QUEST_GENERATED
+  QUEST_COMPLETED
+  LEVEL_UP
+  ATTRIBUTE_UP
+  TITLE_ACQUIRED
+  BOSS_ENCOUNTER
+  BOSS_DEFEATED
+  STREAK_AT_RISK
+  RECOVERY_ACTIVATED
+  ACHIEVEMENT_UNLOCKED
+  SYSTEM
+}
+
+enum ReportType {
+  DAILY
+  WEEKLY
+}
+
+enum TimetableCategory {
+  STUDY
+  EXERCISE
+  MORNING_ROUTINE
+  BATH
+  BREAKFAST
+  LUNCH
+  DINNER
+  GAMING
+  BREAK
+  SLEEP
+}
+
+enum TimetableState {
+  UPCOMING
+  ACTIVE
+  COMPLETED
+  MISSED
+  SKIPPED
+  PAUSED
+  LATE
+  FINISHED_EARLY
+}
+
+// ─────────────────────────── CORE / AUTH ───────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  passwordHash  String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  profile       PlayerProfile?
+  settings      UserSettings?
+
+  attributes         Attribute[]
+  attributeHistory   AttributeHistory[]
+  quests             Quest[]
+  questCompletions   QuestCompletion[]
+  mainQuests         MainQuest[]
+  skillTrees         SkillTree[]
+  skillProgress      SkillProgress[]
+  habits             Habit[]
+  habitLogs          HabitLog[]
+  urgeLogs           UrgeLog[]
+  recoveryQuests     RecoveryQuest[]
+  focusSessions      FocusSession[]
+  bossBattles        BossBattle[]
+  userAchievements   UserAchievement[]
+  userTitles         UserTitle[]
+  streaks            Streak[]
+  streakShields      StreakShield[]
+  rewards            Reward[]
+  rewardPurchases    RewardPurchase[]
+  coinTransactions   CoinTransaction[]
+  reports            Report[]
+  activityLogs       ActivityLog[]
+  notifications      Notification[]
+  levelEvents        LevelProgress[]
+
+  timetableBlocks    TimetableBlock[]
+  timetableLogs      TimetableBlockLog[]
+  studyLogs          StudyLog[]
+  gameSnapshot       GameStateSnapshot?
+}
+
+model UserSettings {
+  id                 String  @id @default(cuid())
+  userId             String  @unique
+  user               User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  wakeTarget         String  @default("05:00") // HH:mm local
+  sleepTarget        String  @default("23:00")
+  minSleepHours      Float   @default(6)
+  dailyXpSoftCap     Int     @default(1200)
+  difficultyBias     Float   @default(1.0) // quest engine tuning
+  aiProvider         String  @default("none")
+  aiModel            String  @default("claude-opus-4-8")
+  theme              String  @default("void")
+  reduceMotion       Boolean @default(false)
+  timezone           String  @default("Asia/Kolkata")
+
+  updatedAt          DateTime @updatedAt
+}
+
+// ─────────────────────────── PLAYER / PROGRESSION ───────────────────────────
+
+model PlayerProfile {
+  id             String  @id @default(cuid())
+  userId         String  @unique
+  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  displayName    String
+  level          Int     @default(1)
+  totalXp        Int     @default(0)   // lifetime XP earned
+  currentXp      Int     @default(0)   // XP within the current level
+  rank           String  @default("Initiate")
+  coins          Int     @default(0)
+
+  activeDays     Int     @default(0)
+  currentStreak  Int     @default(0)   // routine-completion streak
+  longestStreak  Int     @default(0)
+  lastActiveDate DateTime?
+
+  // Cached performance sub-scores (0-100), recomputed by the performance engine.
+  disciplineScore  Float @default(0)
+  knowledgeScore   Float @default(0)
+  physicalScore    Float @default(0)
+  focusScore       Float @default(0)
+  recoveryScore    Float @default(0)
+  lifeScore        Float @default(0)
+
+  equippedTitleId  String?
+  equippedTitle    Title?  @relation("EquippedTitle", fields: [equippedTitleId], references: [id])
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// History of level-up events for analytics ("LevelProgress").
+model LevelProgress {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fromLevel  Int
+  toLevel    Int
+  rank       String
+  totalXpAt  Int
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+// ─────────────────────────── ATTRIBUTES ───────────────────────────
+
+model Attribute {
+  id        String       @id @default(cuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key       AttributeKey
+  level     Int          @default(1)
+  xp        Int          @default(0) // xp within current attribute level
+  totalXp   Int          @default(0)
+  updatedAt DateTime     @updatedAt
+
+  history   AttributeHistory[]
+
+  @@unique([userId, key])
+  @@index([userId])
+}
+
+model AttributeHistory {
+  id          String       @id @default(cuid())
+  userId      String
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attributeId String
+  attribute   Attribute    @relation(fields: [attributeId], references: [id], onDelete: Cascade)
+  key         AttributeKey
+  xpDelta     Int
+  totalXpAt   Int
+  levelAt     Int
+  source      String       // e.g. "quest:wake-5am", "focus:DSA"
+  createdAt   DateTime     @default(now())
+
+  @@index([userId, key, createdAt])
+}
+
+// ─────────────────────────── QUESTS ───────────────────────────
+
+// Reusable definitions the quest engine draws from.
+model QuestTemplate {
+  id             String       @id @default(cuid())
+  key            String       @unique
+  title          String
+  description    String
+  type           QuestType
+  difficulty     Difficulty
+  category       String       // "study" | "fitness" | "focus" | "discipline" | "recovery" ...
+  estMinutes     Int
+  baseXp         Int
+  attributeXp    Json         // { "INT": 20, "FOC": 10 }
+  coinReward     Int          @default(0)
+  streakKey      String?      // links completion to a Streak
+  failureNote    String       @default("")
+  repeatable     Boolean      @default(true)
+  active         Boolean      @default(true)
+
+  quests         Quest[]
+}
+
+// A concrete quest instance assigned for a day / boss / main-quest stage.
+model Quest {
+  id             String        @id @default(cuid())
+  userId         String
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  templateId     String?
+  template       QuestTemplate? @relation(fields: [templateId], references: [id])
+
+  title          String
+  description    String
+  type           QuestType
+  difficulty     Difficulty
+  category       String
+  estMinutes     Int
+  baseXp         Int
+  attributeXp    Json
+  coinReward     Int           @default(0)
+  streakKey      String?
+  failureNote    String        @default("")
+
+  status         QuestStatus   @default(ACTIVE)
+  assignedDate   DateTime      // the "game day" this belongs to (00:00 local)
+  deadline       DateTime?
+
+  mainQuestStageId String?
+  mainQuestStage   MainQuestStage? @relation(fields: [mainQuestStageId], references: [id])
+  bossBattleId     String?
+  bossBattle       BossBattle?     @relation(fields: [bossBattleId], references: [id])
+
+  completion     QuestCompletion?
+
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([userId, assignedDate])
+  @@index([userId, status])
+  @@index([userId, type])
+}
+
+model QuestCompletion {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  questId       String      @unique
+  quest         Quest       @relation(fields: [questId], references: [id], onDelete: Cascade)
+
+  result        QuestStatus // COMPLETED | PARTIAL | FAILED
+  xpAwarded     Int
+  coinsAwarded  Int
+  attributeXp   Json
+  qualityRatio  Float       @default(1) // 1 full, 0.5 partial, 0 failed
+  note          String      @default("")
+  completedAt   DateTime    @default(now())
+
+  @@index([userId, completedAt])
+}
+
+// ─────────────────────────── MAIN QUESTS ───────────────────────────
+
+model MainQuest {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key         String
+  title       String
+  description String
+  theme       String   // color/identity key
+  order       Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  stages      MainQuestStage[]
+
+  @@unique([userId, key])
+  @@index([userId])
+}
+
+model MainQuestStage {
+  id           String   @id @default(cuid())
+  mainQuestId  String
+  mainQuest    MainQuest @relation(fields: [mainQuestId], references: [id], onDelete: Cascade)
+  key          String
+  title        String
+  description  String
+  order        Int
+  targetUnits  Int      @default(100) // progress units required to clear the stage
+  progress     Int      @default(0)
+  completed    Boolean  @default(false)
+  completedAt  DateTime?
+
+  quests       Quest[]
+
+  @@unique([mainQuestId, key])
+  @@index([mainQuestId, order])
+}
+
+// ─────────────────────────── SKILL TREES ───────────────────────────
+
+model SkillTree {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key       String
+  title     String
+  domain    String   // "GATE" | "AIML" | ...
+  createdAt DateTime @default(now())
+
+  nodes     SkillNode[]
+
+  @@unique([userId, key])
+}
+
+model SkillNode {
+  id          String   @id @default(cuid())
+  treeId      String
+  tree        SkillTree @relation(fields: [treeId], references: [id], onDelete: Cascade)
+  key         String
+  title       String
+  description String
+  tier        Int      // depth in the tree (0 = root)
+  order       Int      @default(0)
+  parentKey   String?  // key of prerequisite node within the same tree
+  targetUnits Int      @default(100)
+
+  progress    SkillProgress?
+
+  @@unique([treeId, key])
+  @@index([treeId, tier])
+}
+
+model SkillProgress {
+  id        String      @id @default(cuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nodeId    String      @unique
+  node      SkillNode   @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  status    SkillStatus @default(LOCKED)
+  units     Int         @default(0)
+  updatedAt DateTime    @updatedAt
+
+  @@index([userId, status])
+}
+
+// ─────────────────────────── HABITS & SHADOW SYSTEM ───────────────────────────
+
+model Habit {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key         String
+  title       String
+  kind        HabitKind
+  streakKey   String?   // links to a Streak
+  private     Boolean   @default(false) // shadow habits are private
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+
+  logs        HabitLog[]
+
+  @@unique([userId, key])
+  @@index([userId, kind])
+}
+
+model HabitLog {
+  id        String         @id @default(cuid())
+  userId    String
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  habitId   String
+  habit     Habit          @relation(fields: [habitId], references: [id], onDelete: Cascade)
+  date      DateTime       // game day
+  result    HabitLogResult
+  note      String         @default("")
+  createdAt DateTime       @default(now())
+
+  @@unique([habitId, date])
+  @@index([userId, date])
+}
+
+// Non-shaming urge / trigger tracking for the recovery system.
+model UrgeLog {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  habitKey   String   // which shadow habit this urge relates to
+  resisted   Boolean
+  trigger    String   @default("")
+  mood       String   @default("")
+  location   String   @default("") // location category, not exact place
+  reason     String   @default("")
+  createdAt  DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model RecoveryQuest {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reason      String    // "relapse:no-reels" etc.
+  steps       Json      // string[] of action steps
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId, completed])
+}
+
+// ─────────────────────────── FOCUS MODE ───────────────────────────
+
+model FocusSession {
+  id           String        @id @default(cuid())
+  userId       String
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category     FocusCategory
+  plannedMin   Int
+  actualMin    Int           @default(0)
+  startedAt    DateTime      @default(now())
+  endedAt      DateTime?
+  result       FocusResult?
+  xpAwarded    Int           @default(0)
+  questId      String?       // optional linked quest
+  note         String        @default("")
+
+  @@index([userId, startedAt])
+  @@index([userId, category])
+}
+
+// ─────────────────────────── BOSS BATTLES ───────────────────────────
+
+// Boss definitions (global templates).
+model Boss {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  tagline     String
+  description String
+  maxHp       Int
+  phases      Json     // [{ name, threshold, note }]
+  rewardXp    Int      @default(0)
+  rewardCoins Int      @default(0)
+  rewardTitle String?  // title key granted on defeat
+  rarity      Rarity   @default(RARE)
+
+  battles     BossBattle[]
+}
+
+model BossBattle {
+  id          String     @id @default(cuid())
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bossId      String
+  boss        Boss       @relation(fields: [bossId], references: [id])
+  status      BossStatus @default(ACTIVE)
+  currentHp   Int
+  maxHp       Int
+  phase       Int        @default(0)
+  startedAt   DateTime   @default(now())
+  endedAt     DateTime?
+
+  logs        BossBattleLog[]
+  quests      Quest[]
+
+  @@unique([userId, bossId])
+  @@index([userId, status])
+}
+
+model BossBattleLog {
+  id          String     @id @default(cuid())
+  battleId    String
+  battle      BossBattle @relation(fields: [battleId], references: [id], onDelete: Cascade)
+  action      String     // "focus:DSA", "workout", "relapse-recover"
+  damage      Int        // positive = damage to boss, negative = boss heals
+  critical    Boolean    @default(false)
+  hpAfter     Int
+  createdAt   DateTime   @default(now())
+
+  @@index([battleId, createdAt])
+}
+
+// ─────────────────────────── ACHIEVEMENTS & TITLES ───────────────────────────
+
+model Achievement {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  title       String
+  description String
+  rarity      Rarity
+  category    String
+  targetValue Int      @default(1) // metric threshold
+  metric      String   // which counter it watches, e.g. "dsa_solved"
+  xpReward    Int      @default(0)
+  coinReward  Int      @default(0)
+  titleKey    String?  // title unlocked, if any
+  hidden      Boolean  @default(false)
+
+  unlocks     UserAchievement[]
+}
+
+model UserAchievement {
+  id            String      @id @default(cuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  progress      Int         @default(0)
+  unlocked      Boolean     @default(false)
+  unlockedAt    DateTime?
+
+  @@unique([userId, achievementId])
+  @@index([userId, unlocked])
+}
+
+model Title {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  description String
+  rarity      Rarity   @default(COMMON)
+  xpBonusPct  Float    @default(0) // tiny balanced bonus, e.g. 0.02 = +2%
+
+  userTitles  UserTitle[]
+  equippedOn  PlayerProfile[] @relation("EquippedTitle")
+}
+
+model UserTitle {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  titleId   String
+  title     Title    @relation(fields: [titleId], references: [id], onDelete: Cascade)
+  acquiredAt DateTime @default(now())
+
+  @@unique([userId, titleId])
+  @@index([userId])
+}
+
+// ─────────────────────────── STREAKS ───────────────────────────
+
+model Streak {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  key           String   // "wake" | "gate" | "dsa" | "workout" | "deepwork" | "no-reels" | "porn-free" | "routine"
+  title         String
+  current       Int      @default(0)
+  longest       Int      @default(0)
+  lastDate      DateTime?
+  shieldsUsed   Int      @default(0)
+  updatedAt     DateTime @updatedAt
+
+  @@unique([userId, key])
+  @@index([userId])
+}
+
+model StreakShield {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  earnedAt  DateTime @default(now())
+  usedAt    DateTime?
+  usedOnKey String?
+
+  @@index([userId, usedAt])
+}
+
+// ─────────────────────────── REWARDS & ECONOMY ───────────────────────────
+
+model Reward {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  description String @default("")
+  cost      Int
+  icon      String   @default("gift")
+  custom    Boolean  @default(true)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  purchases RewardPurchase[]
+
+  @@index([userId, active])
+}
+
+model RewardPurchase {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rewardId  String
+  reward    Reward   @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+  cost      Int
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model CoinTransaction {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount    Int        // positive earn, negative spend
+  reason    CoinReason
+  source    String     @default("")
+  balance   Int        // balance after this transaction
+  createdAt DateTime   @default(now())
+
+  @@index([userId, createdAt])
+}
+
+// ─────────────────────────── REPORTS & ANALYTICS ───────────────────────────
+
+model Report {
+  id         String     @id @default(cuid())
+  userId     String
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       ReportType
+  periodKey  String     // "2026-07-09" for daily, "2026-W28" for weekly
+  data       Json       // full computed report payload
+  summary    String     @default("")
+  createdAt  DateTime   @default(now())
+
+  @@unique([userId, type, periodKey])
+  @@index([userId, type, createdAt])
+}
+
+// Append-only fact table powering all stats/graphs/heatmaps.
+model ActivityLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      DateTime // game day
+  kind      String   // "study_minutes" | "dsa_solved" | "workout" | "run_km" | "steps" | "sleep_hours" | "reels_minutes" ...
+  value     Float
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId, date])
+  @@index([userId, kind, date])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  body      String           @default("")
+  read      Boolean          @default(false)
+  meta      Json?
+  createdAt DateTime         @default(now())
+
+  @@index([userId, read, createdAt])
+}
+
+// ─────────────────────────── TIMETABLE ───────────────────────────
+
+// A block in the user's daily schedule template (shared by web + mobile).
+model TimetableBlock {
+  id        String            @id @default(cuid())
+  userId    String
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  order     Int               @default(0) // sort key by start time
+  startHour Int
+  startMin  Int
+  endHour   Int
+  endMin    Int
+  activity  String
+  category  TimetableCategory
+  xpReward  Int               @default(0)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  logs      TimetableBlockLog[]
+
+  @@index([userId, order])
+}
+
+// Per-day runtime state for a block (ACTIVE/COMPLETED/SKIPPED/...).
+model TimetableBlockLog {
+  id        String         @id @default(cuid())
+  userId    String
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  blockId   String
+  block     TimetableBlock @relation(fields: [blockId], references: [id], onDelete: Cascade)
+  date      DateTime       // game day (00:00 local)
+  state     TimetableState @default(UPCOMING)
+  updatedAt DateTime       @updatedAt
+
+  @@unique([userId, blockId, date])
+  @@index([userId, date])
+}
+
+// Per-study-block tracking recorded when a STUDY block is worked.
+model StudyLog {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  blockId         String
+  subject         String
+  durationMinutes Int
+  deepWorkScore   Int      @default(5) // 1-10
+  distractions    Int      @default(0)
+  notes           String   @default("")
+  missionLinked   String   @default("")
+  xpEarned        Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+// Opaque per-user snapshot of the mobile game state, for cross-device sync.
+model GameStateSnapshot {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  data      Json
+  revision  Int      @default(0)
+  updatedAt DateTime @updatedAt
+}

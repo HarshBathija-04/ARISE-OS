@@ -1,0 +1,106 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-display: "Space Grotesk", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+  }
+  body {
+    @apply bg-void-950 text-slate-200 font-sans antialiased;
+    background-image:
+      radial-gradient(circle at 15% -10%, rgba(139, 92, 255, 0.14), transparent 45%),
+      radial-gradient(circle at 90% 0%, rgba(57, 167, 255, 0.1), transparent 40%);
+    background-attachment: fixed;
+  }
+  ::selection {
+    background: rgba(139, 92, 255, 0.35);
+  }
+  /* Thin arc scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(57, 167, 255, 0.25);
+    border-radius: 999px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(57, 167, 255, 0.45);
+    background-clip: content-box;
+  }
+}
+
+@layer components {
+  /* Glass system panel */
+  .panel {
+    @apply relative rounded-2xl border border-white/[0.06] bg-white/[0.02] backdrop-blur-xl;
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.04),
+      0 20px 50px -25px rgba(0, 0, 0, 0.9);
+  }
+  .panel-glow {
+    @apply panel;
+    box-shadow:
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.06),
+      0 0 0 1px rgba(57, 167, 255, 0.12),
+      0 24px 60px -30px rgba(57, 167, 255, 0.35);
+  }
+  .hairline {
+    @apply border-white/[0.06];
+  }
+  /* Uppercase system label */
+  .sys-label {
+    @apply font-mono text-[10px] uppercase tracking-[0.28em] text-slate-500;
+  }
+  .sys-value {
+    @apply font-display font-semibold text-slate-100;
+  }
+  .grid-overlay {
+    background-size: 42px 42px;
+    @apply bg-grid-arc;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition
+      focus:outline-none focus-visible:ring-2 focus-visible:ring-arc-blue/60 disabled:opacity-40 disabled:pointer-events-none;
+  }
+  .btn-primary {
+    @apply btn bg-arc-blue/15 text-arc-blue border border-arc-blue/30 hover:bg-arc-blue/25 hover:shadow-glow;
+  }
+  .btn-violet {
+    @apply btn bg-arc-violet/15 text-arc-violet border border-arc-violet/30 hover:bg-arc-violet/25 hover:shadow-glow-violet;
+  }
+  .btn-ghost {
+    @apply btn text-slate-400 border border-white/[0.06] hover:text-slate-100 hover:border-white/20;
+  }
+  .btn-danger {
+    @apply btn bg-danger/10 text-danger border border-danger/30 hover:bg-danger/20;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest;
+  }
+  .tt-input {
+    @apply mt-1 w-full rounded-lg border border-white/[0.08] bg-void-900 px-3 py-2 text-sm text-slate-100
+      placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-arc-blue/50;
+  }
+}
+
+/* difficulty chip colors */
+.diff-E { @apply bg-slate-500/15 text-slate-300; }
+.diff-D { @apply bg-emerald-500/15 text-emerald-300; }
+.diff-C { @apply bg-sky-500/15 text-sky-300; }
+.diff-B { @apply bg-indigo-500/15 text-indigo-300; }
+.diff-A { @apply bg-violet-500/15 text-violet-300; }
+.diff-S { @apply bg-amber-500/15 text-amber-300; }
+.diff-SS { @apply bg-rose-500/15 text-rose-300; }

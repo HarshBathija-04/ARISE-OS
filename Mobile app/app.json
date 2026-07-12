@@ -1,0 +1,68 @@
+{
+  "expo": {
+    "name": "SOLO OS",
+    "slug": "solo-os",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "soloos",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#030508",
+    "icon": "./assets/icon.png",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "android": {
+      "package": "com.harshbathija.soloos",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#030508"
+      },
+      "softwareKeyboardLayoutMode": "pan",
+      "permissions": [
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT"
+      ]
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.harshbathija.soloos"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-status-bar",
+      "expo-secure-store",
+      "expo-font",
+      "expo-local-authentication",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "backgroundColor": "#030508",
+          "resizeMode": "contain"
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#3B82F6"
+        }
+      ],
+      "expo-sqlite"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "120b1d64-da1b-42ab-b494-1b3436956ff2"
+      },
+      "router": {}
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/120b1d64-da1b-42ab-b494-1b3436956ff2"
+    }
+  }
+}
