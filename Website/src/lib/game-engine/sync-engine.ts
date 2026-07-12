@@ -160,17 +160,14 @@ export async function mergePostgresToSnapshot(userId: string, snapshotData: any)
   }
 
   // Inject web-generated quests that aren't yet in the mobile snapshot.
-  // We fetch ALL active quests, plus any completed today.
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
   const relevantQuests = await prisma.quest.findMany({
     where: { 
-      userId,
-      OR: [
-        { status: "ACTIVE" },
-        { status: "COMPLETED", updatedAt: { gte: today } }
-      ]
+      userId, 
+      assignedDate: { gte: today }, 
+      status: "ACTIVE" 
     },
   });
 
