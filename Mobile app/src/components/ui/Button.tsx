@@ -26,7 +26,7 @@ interface ButtonProps {
 const variantColors: Record<Variant, { bg: string; fg: string; border: string; glow?: string; gradient?: [string, string] }> = {
   primary: {
     bg: colors.systemBlue,
-    fg: colors.white,
+    fg: colors.bg,
     border: colors.systemBlue,
     glow: colors.systemBlue,
     gradient: [colors.dungeonGateStart, colors.dungeonGateEnd],
@@ -39,7 +39,7 @@ const variantColors: Record<Variant, { bg: string; fg: string; border: string; g
     fg: colors.bg,
     border: colors.monarchGold,
     glow: colors.monarchGold,
-    gradient: [colors.monarchGold, '#FFD700'],
+    gradient: [colors.monarchGold, colors.goldBright],
   },
   outline: { bg: 'transparent', fg: colors.text, border: colors.borderBright },
 };
@@ -122,7 +122,7 @@ export function Button({
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',

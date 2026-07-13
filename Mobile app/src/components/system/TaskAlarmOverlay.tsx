@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
+import { View, StyleSheet, Dimensions, StatusBar, Platform } from 'react-native';
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withRepeat, Easing, FadeIn,
   withSequence,
@@ -11,11 +11,12 @@ import { colors, withAlpha, radius } from '@/theme';
 import { useOverlayStore } from '@/store/overlayStore';
 import { haptics } from '@/services/notifications/haptics';
 
-const { height } = Dimensions.get('window');
+const { width, height } = Dimensions.get('screen');
 
 /**
- * Solo Leveling in-app alarm popup.
- * Triggers exactly when a new task block starts. Requires explicit acknowledgement.
+ * Solo Leveling in-app alarm popup — FULL-SCREEN EXCLUSIVE.
+ * Covers the entire screen (including status bar area) so no underlying
+ * content is visible. Requires explicit acknowledgement to dismiss.
  */
 export function TaskAlarmOverlay() {
   const payload = useOverlayStore((s) => s.taskAlarm);
@@ -69,7 +70,7 @@ function TaskAlarmContent({
   }, [pulse, ringScale, ringOpacity]);
 
   const bgStyle = useAnimatedStyle(() => ({
-    opacity: 0.8 + pulse.value * 0.2, // pulses between 0.8 and 1.0 opacity of the tint
+    opacity: 0.8 + pulse.value * 0.2,
   }));
 
   const textGlowStyle = useAnimatedStyle(() => ({
@@ -83,14 +84,17 @@ function TaskAlarmContent({
   }));
 
   return (
-    <Animated.View entering={FadeIn.duration(200)} style={StyleSheet.absoluteFill}>
-      {/* Background with slight pulse */}
+    <Animated.View entering={FadeIn.duration(200)} style={styles.fullScreen}>
+      {/* Hide status bar content while alarm is showing */}
+      <StatusBar backgroundColor={colors.bg} barStyle="light-content" />
+
+      {/* Fully opaque background — NO content visible behind */}
       <Animated.View style={[styles.backdrop, bgStyle]}>
         <LinearGradient
           colors={[
-            withAlpha(colors.crimson, 0.15),
-            withAlpha(colors.bg, 0.95),
-            withAlpha(colors.systemBlue, 0.15),
+            withAlpha(colors.crimson, 0.12),
+            colors.bg,
+            withAlpha(colors.systemBlue, 0.12),
           ]}
           style={StyleSheet.absoluteFill}
         />
@@ -98,6 +102,8 @@ function TaskAlarmContent({
 
       <View style={styles.center}>
         <Animated.View style={[styles.ring, ringStyle]} />
+        {/* Second expanding ring for depth */}
+        <Animated.View style={[styles.ring2, ringStyle]} />
 
         <Text variant="label" color={colors.phantomCyan}>
           {'「'}SYSTEM ALERT{'」'}
@@ -115,7 +121,7 @@ function TaskAlarmContent({
 
         <View style={styles.taskCard}>
           <LinearGradient
-            colors={[withAlpha(colors.systemBlue, 0.1), 'transparent']}
+            colors={[withAlpha(colors.systemBlue, 0.12), 'transparent']}
             style={StyleSheet.absoluteFill}
             start={{ x: 0, y: 0 }}
             end={{ x: 0, y: 1 }}
@@ -138,6 +144,7 @@ function TaskAlarmContent({
             variant="primary"
             size="lg"
             haptic="heavy"
+            full
           />
         </View>
       </View>
@@ -145,13 +152,32 @@ function TaskAlarmContent({
   );
 }
 
+const statusBarHeight = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0;
+
 const styles = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: colors.bg },
+  fullScreen: {
+    position: 'absolute',
+    top: -statusBarHeight,
+    left: 0,
+    width: width,
+    height: height + statusBarHeight,
+    zIndex: 99999,
+    elevation: 99999,
+  },
+  backdrop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: colors.bg,
+  },
   center: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 24,
+    paddingTop: statusBarHeight,
     gap: 12,
     zIndex: 10,
   },
@@ -168,14 +194,25 @@ const styles = StyleSheet.create({
     borderRadius: 150,
     borderWidth: 1,
     borderColor: colors.systemBlue,
-    top: height / 2 - 150,
+    top: '50%',
+    marginTop: -150,
+  },
+  ring2: {
+    position: 'absolute',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    borderWidth: 0.5,
+    borderColor: withAlpha(colors.systemBlue, 0.4),
+    top: '50%',
+    marginTop: -110,
   },
   taskCard: {
     width: '100%',
-    backgroundColor: withAlpha(colors.systemBlue, 0.05),
+    backgroundColor: withAlpha(colors.systemBlue, 0.06),
     borderWidth: 1,
     borderColor: withAlpha(colors.systemBlue, 0.3),
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     padding: 24,
     alignItems: 'center',
     marginBottom: 40,

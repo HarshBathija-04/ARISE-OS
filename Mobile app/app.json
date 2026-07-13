@@ -17,7 +17,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#030508"
       },
-      "softwareKeyboardLayoutMode": "pan",
+      "softwareKeyboardLayoutMode": "resize",
       "permissions": [
         "android.permission.USE_BIOMETRIC",
         "android.permission.USE_FINGERPRINT"
@@ -44,7 +44,7 @@
       [
         "expo-notifications",
         {
-          "color": "#3B82F6"
+          "color": "#00E5A0"
         }
       ],
       "expo-sqlite"

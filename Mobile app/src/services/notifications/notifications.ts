@@ -94,6 +94,8 @@ interface DailyScheduleInput {
   title: string;
   body: string;
   identifier: string;
+  /** Optional data payload attached to the notification (used for identifying timetable alarms). */
+  data?: Record<string, unknown>;
 }
 
 async function scheduleDaily(input: DailyScheduleInput): Promise<void> {
@@ -105,6 +107,8 @@ async function scheduleDaily(input: DailyScheduleInput): Promise<void> {
         title: input.title,
         body: input.body,
         ...(Platform.OS === 'android' ? { channelId: input.channelId } : {}),
+        ...(input.data ? { data: input.data } : {}),
+        sound: true,
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DAILY,
@@ -181,7 +185,7 @@ export async function applySchedule(cfg: ScheduleConfig): Promise<void> {
 
   if (cfg.channels.TIMETABLE && cfg.timetableBlocks) {
     for (const block of cfg.timetableBlocks) {
-      // 1. Exact time alarm
+      // 1. Exact time alarm — carries data so the response listener can trigger the overlay
       await scheduleDaily({
         hour: block.startHour,
         minute: block.startMin,
@@ -189,6 +193,12 @@ export async function applySchedule(cfg: ScheduleConfig): Promise<void> {
         title: 'SYSTEM // TASK STARTING',
         body: `It is time for: ${block.activity}`,
         identifier: `soloos-timetable-start-${block.id}`,
+        data: {
+          type: 'TIMETABLE_ALARM',
+          blockId: block.id,
+          activity: block.activity,
+          category: block.category,
+        },
       });
 
       // 2. Early warning (5 mins before)

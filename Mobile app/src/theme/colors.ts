@@ -1,59 +1,56 @@
 /**
  * SOLO OS — Centralized color system.
  *
- * Inspired by Solo Leveling's System Interface:
- *  - Near-void black backgrounds
- *  - Iconic system-blue window borders / accents (#4A7AFF)
- *  - Shadow-violet monarch energy (#7B61FF)
- *  - Cold, authoritarian text hierarchy
+ * "Neon Forge" — deep obsidian base with electric emerald primary,
+ * molten amber accents, arctic frost text, and hot-red danger states.
  *
  * NEVER hardcode hex values in components. Import from here (or `theme`).
  */
 
 export const colors = {
   // ── Backgrounds (The Void) ──────────────────────────────────────
-  bg: '#020408',            // primary — near-void black
-  bgSecondary: '#060A14',   // secondary — deep space
-  surface: '#0A1228',       // panels / cards — cold blue-tinted glass
-  surface2: '#0E1A36',      // raised surface — darker dungeon blue
-  surface3: '#162040',      // elevated / hover — faint gate glow
-  border: '#1A2744',        // hairline borders — blue-tinted
-  borderBright: '#2B4A7A',  // active / focused borders — system edge
+  bg: '#060B14',            // primary — deep navy-black
+  bgSecondary: '#0A1020',   // secondary — deep space
+  surface: '#0E1628',       // panels / cards — cold navy glass
+  surface2: '#141E34',      // raised surface — slightly lighter
+  surface3: '#1A2844',      // elevated / hover — faint glow
+  border: '#1C2D4A',        // hairline borders — navy-tinted
+  borderBright: '#2A4A6E',  // active / focused borders — brighter edge
 
   // ── System Energies ─────────────────────────────────────────────
-  energy: '#4A7AFF',        // System Blue — primary (the iconic gate blue)
-  energyBright: '#6B9AFF',  // Bright system blue
-  energyDim: '#1E3A8A',     // Dim system blue
-  violet: '#7B61FF',        // Shadow Violet — monarch energy
-  violetBright: '#9D8AFF',  // Bright violet
-  cyan: '#22D3EE',          // Phantom Cyan — focus / system online
-  cyanBright: '#67E8F9',    // Bright cyan
-  crimson: '#DC2626',       // Blood crimson — danger / boss
-  crimsonDim: '#7F1D2A',    // Dim crimson
-  gold: '#F5A623',          // Sovereign Gold — legendary / rank
-  goldBright: '#FFCC44',    // Bright gold
-  green: '#34D399',         // Success / stable states
+  energy: '#00E5A0',        // Electric Emerald — primary accent
+  energyBright: '#33FFB8',  // Bright emerald
+  energyDim: '#0A5E42',     // Dim emerald
+  violet: '#FF6B35',        // Molten Orange — secondary accent
+  violetBright: '#FF8F5E',  // Bright orange
+  cyan: '#00D4FF',          // Electric Cyan — info / system online
+  cyanBright: '#55E0FF',    // Bright cyan
+  crimson: '#FF4757',       // Hot Red — danger / boss
+  crimsonDim: '#8B1A25',    // Dim crimson
+  gold: '#FFD93D',          // Bright Amber — legendary / rank
+  goldBright: '#FFE570',    // Bright amber
+  green: '#00E5A0',         // Success / stable states (matches primary)
 
-  // ── Solo Leveling Signature Colors ──────────────────────────────
-  systemBlue: '#4A7AFF',    // The System window color
-  shadowViolet: '#7B61FF',  // Shadow monarch aura
-  monarchGold: '#F5A623',   // Rank / sovereignty
-  phantomCyan: '#22D3EE',   // System online / phantom
-  dungeonGateStart: '#4A7AFF', // Dungeon gate gradient start
-  dungeonGateEnd: '#7B61FF',   // Dungeon gate gradient end
+  // ── Signature Colors ───────────────────────────────────────────
+  systemBlue: '#00E5A0',    // Primary system accent (emerald)
+  shadowViolet: '#FF6B35',  // Secondary accent (molten orange)
+  monarchGold: '#FFD93D',   // Rank / sovereignty (bright amber)
+  phantomCyan: '#00D4FF',   // System online / info
+  dungeonGateStart: '#00E5A0', // Gate gradient start (emerald)
+  dungeonGateEnd: '#00D4FF',   // Gate gradient end (cyan)
 
   // ── Text ────────────────────────────────────────────────────────
-  text: '#E2E8F4',          // cold white with blue undertone
-  textSecondary: '#7A8FB5', // muted blue-grey
-  textDim: '#3D5278',       // low-emphasis — cold
-  textFaint: '#1E3050',     // ghost / placeholder
+  text: '#E8EDF5',          // arctic frost — cold white with blue undertone
+  textSecondary: '#8A9BB5', // muted blue-grey
+  textDim: '#445570',       // low-emphasis — cold
+  textFaint: '#243050',     // ghost / placeholder
 
   // ── Rarity ──────────────────────────────────────────────────────
-  rarityCommon: '#7A8FB5',
-  rarityRare: '#4A7AFF',
-  rarityEpic: '#7B61FF',
-  rarityLegendary: '#F5A623',
-  rarityMythic: '#DC2626',
+  rarityCommon: '#8A9BB5',
+  rarityRare: '#00D4FF',
+  rarityEpic: '#FF6B35',
+  rarityLegendary: '#FFD93D',
+  rarityMythic: '#FF4757',
 
   // ── Absolutes ───────────────────────────────────────────────────
   black: '#000000',

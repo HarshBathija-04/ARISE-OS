@@ -23,35 +23,18 @@ interface RowProps {
 /**
  * Solo Leveling system-row — a tappable list entry with the system window
  * border treatment, left edge accent bar with glow, and cold text styling.
+ *
+ * Layout: [accent-edge] [icon] [label + sub] [right / chevron]
+ * All in a single horizontal flex row.
  */
 export function Row({ label, sub, icon, right, onPress, hideChevron, accent, style }: RowProps) {
   const interactive = !!onPress;
-  const Container: typeof Pressable | typeof View = interactive ? Pressable : View;
 
-  return (
-    <Container
-      {...(interactive
-        ? {
-            accessibilityRole: 'button',
-            onPress: () => {
-              try { haptics.tick(); } catch {}
-              onPress?.();
-            },
-          }
-        : {})}
-      style={
-        interactive
-          ? ({ pressed }: { pressed: boolean }) => [
-              styles.row,
-              {
-                opacity: pressed ? 0.85 : 1,
-                borderColor: pressed ? withAlpha(accent ?? colors.systemBlue, 0.5) : withAlpha(colors.border, 0.8),
-              },
-              style,
-            ]
-          : [styles.row, style]
-      }
-    >
+  const content = (
+    <>
+      {accent ? (
+        <View style={[styles.edge, { backgroundColor: accent, shadowColor: accent }]} />
+      ) : null}
       {icon ? <View style={styles.icon}>{icon}</View> : null}
       <View style={styles.body}>
         <Text variant="mono" color={colors.text} numberOfLines={1}>
@@ -64,10 +47,35 @@ export function Row({ label, sub, icon, right, onPress, hideChevron, accent, sty
         ) : null}
       </View>
       {right ?? (interactive && !hideChevron ? <ChevronRight size={18} color={colors.textDim} /> : null)}
-      {accent ? (
-        <View style={[styles.edge, { backgroundColor: accent, shadowColor: accent }]} />
-      ) : null}
-    </Container>
+    </>
+  );
+
+  if (interactive) {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => {
+          try { haptics.tick(); } catch {}
+          onPress?.();
+        }}
+        style={({ pressed }) => [
+          styles.row,
+          {
+            opacity: pressed ? 0.85 : 1,
+            borderColor: pressed ? withAlpha(accent ?? colors.systemBlue, 0.5) : withAlpha(colors.border, 0.8),
+          },
+          style,
+        ]}
+      >
+        {content}
+      </Pressable>
+    );
+  }
+
+  return (
+    <View style={[styles.row, style]}>
+      {content}
+    </View>
   );
 }
 
@@ -81,7 +89,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: withAlpha(colors.border, 0.8),
     borderRadius: radius.md,
-    paddingHorizontal: spacing.base,
+    paddingLeft: spacing.base + 3, // extra left padding to clear the accent edge
+    paddingRight: spacing.base,
     paddingVertical: spacing.md,
     overflow: 'hidden',
     // Subtle system glow
@@ -91,7 +100,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 2,
   },
-  icon: { width: 24, alignItems: 'center' },
+  icon: { width: 24, alignItems: 'center', justifyContent: 'center' },
   body: { flex: 1, gap: 2 },
   edge: {
     position: 'absolute',

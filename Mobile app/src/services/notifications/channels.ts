@@ -30,42 +30,42 @@ export const CHANNELS: ChannelDef[] = [
     name: 'Daily Missions',
     description: 'Morning mission drops and daily objective reminders.',
     importance: Notifications.AndroidImportance.HIGH,
-    color: '#3B82F6',
+    color: '#00D4FF', // electric cyan
   },
   {
     id: 'STREAK_WARNINGS',
     name: 'Streak Warnings',
     description: 'Alerts when an active streak is about to break.',
     importance: Notifications.AndroidImportance.HIGH,
-    color: '#F5C542',
+    color: '#FFD93D', // bright amber
   },
   {
     id: 'FOCUS',
     name: 'Focus',
     description: 'Focus session prompts and deep-work nudges.',
     importance: Notifications.AndroidImportance.DEFAULT,
-    color: '#22D3EE',
+    color: '#00D4FF', // electric cyan
   },
   {
     id: 'RECOVERY',
     name: 'Recovery',
     description: 'Neutral, private check-ins for recovery protocols.',
     importance: Notifications.AndroidImportance.DEFAULT,
-    color: '#8B5CF6',
+    color: '#FF6B35', // molten orange
   },
   {
     id: 'SYSTEM_EVENTS',
     name: 'System Events',
     description: 'Level ups, achievements, boss events, evening reviews.',
     importance: Notifications.AndroidImportance.DEFAULT,
-    color: '#34D399',
+    color: '#00E5A0', // electric emerald
   },
   {
     id: 'TIMETABLE',
     name: 'Timetable Alarms',
     description: 'Exact-time alarms and early warnings for your schedule.',
-    importance: Notifications.AndroidImportance.HIGH,
-    color: '#4A7AFF', // systemBlue
+    importance: Notifications.AndroidImportance.MAX,
+    color: '#00E5A0', // system emerald
   },
 ];
 

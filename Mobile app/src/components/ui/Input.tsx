@@ -103,6 +103,8 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: 16,
     paddingVertical: spacing.md,
+    // Ensure touch events are always received on Android
+    ...(require('react-native').Platform.OS === 'android' ? { textAlignVertical: 'center' } : {}),
   },
   reveal: { padding: 4 },
 });
