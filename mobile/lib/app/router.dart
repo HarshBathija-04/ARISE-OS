@@ -6,12 +6,16 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/realtime/realtime_invalidator.dart';
+import '../features/achievements/achievements_screen.dart';
+import '../features/analytics/analytics_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/signup_screen.dart';
+import '../features/bosses/bosses_screen.dart';
 import '../features/dashboard/dashboard_screen.dart';
 import '../features/focus/focus_screen.dart';
 import '../features/habits/habits_screen.dart';
 import '../features/quests/quests_screen.dart';
+import '../features/rewards/rewards_screen.dart';
 import '../features/timetable/timetable_screen.dart';
 
 /// Bridges a Stream into a Listenable for go_router's refreshListenable.
@@ -47,6 +51,14 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
       GoRoute(path: '/signup', builder: (_, __) => const SignupScreen()),
+      // Phase-2 screens: pushed full-screen over the shell, reached from the
+      // dashboard "MORE SYSTEMS" menu.
+      GoRoute(path: '/bosses', builder: (_, __) => const BossesScreen()),
+      GoRoute(
+          path: '/achievements',
+          builder: (_, __) => const AchievementsScreen()),
+      GoRoute(path: '/rewards', builder: (_, __) => const RewardsScreen()),
+      GoRoute(path: '/analytics', builder: (_, __) => const AnalyticsScreen()),
       StatefulShellRoute.indexedStack(
         builder: (context, state, shell) => _AppShell(shell: shell),
         branches: [

@@ -2,6 +2,9 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../features/achievements/achievements_provider.dart';
+import '../../features/analytics/analytics_provider.dart';
+import '../../features/bosses/bosses_provider.dart';
 import '../../features/dashboard/dashboard_provider.dart';
 import '../../features/focus/focus_controller.dart';
 import '../../features/habits/habits_provider.dart';
@@ -30,6 +33,14 @@ final realtimeInvalidatorProvider = Provider<void>((ref) {
         case 'quests':
           ref.invalidate(dashboardProvider);
           ref.invalidate(questsProvider);
+          // boss damage, achievement progress and analytics metrics are all
+          // side-effects of quest completion; their own tables
+          // (boss_battles, user_achievements, activity_logs) are not in the
+          // realtime publication, so piggyback on the quests event.
+          ref.invalidate(bossesProvider);
+          ref.invalidate(achievementsProvider);
+          ref.invalidate(performanceProvider);
+          ref.invalidate(heatmapProvider);
         case 'streaks':
           ref.invalidate(dashboardProvider);
           ref.invalidate(habitsProvider);
@@ -39,6 +50,7 @@ final realtimeInvalidatorProvider = Provider<void>((ref) {
           ref.invalidate(habitsProvider);
           ref.invalidate(recoveryProvider);
           ref.invalidate(dashboardProvider);
+          ref.invalidate(performanceProvider);
       }
     }
     // Focus sessions have no realtime table here, but focus/today is cheap

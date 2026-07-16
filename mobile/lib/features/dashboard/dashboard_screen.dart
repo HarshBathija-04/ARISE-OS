@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../app/theme.dart';
 import '../../core/models/models.dart';
@@ -18,6 +19,19 @@ class DashboardScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('ARISE//OS'),
         actions: [
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.apps, color: AriseColors.blue),
+            tooltip: 'More systems',
+            color: AriseColors.panel,
+            onSelected: (route) => context.push(route),
+            itemBuilder: (context) => const [
+              PopupMenuItem(value: '/bosses', child: Text('BOSS BATTLES')),
+              PopupMenuItem(
+                  value: '/achievements', child: Text('ACHIEVEMENTS')),
+              PopupMenuItem(value: '/rewards', child: Text('REWARDS SHOP')),
+              PopupMenuItem(value: '/analytics', child: Text('ANALYTICS')),
+            ],
+          ),
           IconButton(
             icon: const Icon(Icons.logout, color: AriseColors.textDim),
             tooltip: 'Sign out',

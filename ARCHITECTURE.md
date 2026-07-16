@@ -67,8 +67,26 @@ Deploy on **Railway** (or Render/Fly — needs an always-on process for node-cro
 | `INTERNAL_CRON_SECRET` | random string; enables `POST /v1/internal/cron/daily-quests` |
 | `CORS_ORIGINS` | `https://your-site.vercel.app,http://localhost:3000` |
 
-Daily quests generate at **00:00 IST** via node-cron, and lazily on
-`GET /v1/quests/today` as a safety net.
+Daily quests are **pre-generated for the next day at 12:00 IST** (noon) via
+node-cron — written with tomorrow's `assigned_date`, so they unlock when the
+game day flips at midnight. A second cron at **00:00 IST** is a safety pass
+(no-op when pre-generation ran), and `GET /v1/quests/today` lazily ensures the
+set as a final net. Manual triggers: `POST /v1/internal/cron/next-day-quests`
+and `POST /v1/internal/cron/daily-quests` (x-internal-secret header).
+
+**Personalized quest engine (since migration 0006):** each day's set is seeded
+by (day, user) — different every day, stable within a day, different per user —
+and built from the user's own state: 2 **goal quests** synthesized from active
+Main Quests (they carry `main_quest_stage_id` + `stage_units`; completing one
+auto-advances that stage), up to 2 **routine quests** from today's timetable
+variant (office/WFH/weekend aware), and **habit anchors** drawn from the
+user's active habits (global templates tied to streaks the user doesn't
+pursue are excluded from the pool). Adaptive rules: 3 bad days → lighter set,
+7 strong days → one harder challenge, broken pursued streaks → re-entry
+quests, distraction spike → focus quests, recovery mode → light day.
+`POST /v1/quests/generate` with `{"regenerate": true}` redraws today's
+still-active quests (completed ones are kept, never re-issued).
+`scripts/regenerate-today.ts [email ...]` does the same server-side.
 
 **Timetable model (since migration 0005):** every block has a `dayType` —
 `ALL` (shared, e.g. morning routine), `OFFICE`, `WFH`, or `WEEKEND` — so one

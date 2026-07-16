@@ -19,7 +19,10 @@ questsRoutes.get("/quests/today", async (req, res, next) => {
 
 questsRoutes.post("/quests/generate", async (req, res, next) => {
   try {
-    const result = await ensureTodayQuests(req.userId);
+    const { regenerate } = z
+      .object({ regenerate: z.boolean().optional() })
+      .parse(req.body ?? {});
+    const result = await ensureTodayQuests(req.userId, regenerate ?? false);
     res.json({ ok: true, ...result });
   } catch (e) {
     next(e);

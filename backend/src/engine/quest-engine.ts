@@ -18,10 +18,48 @@
  *   - a failing streak (wake/workout/dsa) → prioritise a re-entry quest for it
  *   - rising distraction            → inject a focus / digital-control quest
  *   - active recovery               → keep the day light, add recovery steps
+ *
+ * PERSONALIZATION (all deterministic per day+user)
+ *   - GOAL quests: 2 of the user's active Main Quests are drawn each day; a
+ *     synthesized MAIN quest targets the next incomplete stage and carries
+ *     stageId/stageUnits so completing it advances that goal's progress.
+ *   - ROUTINE quests: up to 2 of today's timetable blocks (study/exercise/
+ *     networking/work) become "honor the schedule" quests.
+ *   - HABIT anchors: anchors come from the user's OWN active habits (matched
+ *     to a global template when one exists for the same streak, otherwise
+ *     synthesized), so custom accounts get their custom dailies. The global
+ *     ANCHOR_KEYS list is only the fallback for users with no habits.
  */
 
-import type { Difficulty } from "../db/tables.js";
+import type { AttributeKey, Difficulty } from "../db/tables.js";
 import { QUEST_TEMPLATES, ANCHOR_KEYS, type QuestTemplateDef } from "./content/quest-templates.js";
+
+/** An active Main Quest goal with its next incomplete stage. */
+export interface GoalContext {
+  goalTitle: string;
+  stageId: string;
+  stageTitle: string;
+  stageDescription: string;
+  progress: number;
+  targetUnits: number;
+}
+
+/** A timetable block from today's schedule variant. */
+export interface RoutineBlockContext {
+  activity: string;
+  category: string; // TimetableCategory
+  startHour: number;
+  startMin: number;
+  endHour: number;
+  endMin: number;
+}
+
+/** One of the user's own active habits. */
+export interface HabitContext {
+  key: string;
+  title: string;
+  streakKey?: string | null;
+}
 
 export interface QuestEngineContext {
   /** Stable per-day seed source (e.g. "2026-07-12"). */
@@ -40,10 +78,20 @@ export interface QuestEngineContext {
   difficultyBias: number;
   /** Weakest attribute key, to bias selection toward it. */
   weakestAttribute?: string;
+  /** Active Main Quest goals (next incomplete stage each). */
+  goals?: GoalContext[];
+  /** Today's timetable blocks (already filtered to today's day type). */
+  routineBlocks?: RoutineBlockContext[];
+  /** The user's active BUILD habits — become the personal anchor set. */
+  habits?: HabitContext[];
 }
 
 export interface PlannedQuest extends QuestTemplateDef {
   reason: string; // why the engine chose this quest (shown to the player / AI Guide)
+  /** Main Quest stage this quest advances when completed (goal quests only). */
+  stageId?: string;
+  /** Progress units logged on stageId at completion. */
+  stageUnits?: number;
 }
 
 const DIFF_ORDER: Difficulty[] = ["E", "D", "C", "B", "A", "S", "SS"];
@@ -106,6 +154,98 @@ function weightedPick(
   return pool[pool.length - 1];
 }
 
+/** Rotate a deterministic sample of `n` items out of `pool` for this day. */
+function rotatingSample<T>(pool: T[], n: number, rng: () => number): T[] {
+  const copy = [...pool];
+  const out: T[] = [];
+  while (out.length < n && copy.length > 0) {
+    out.push(copy.splice(Math.floor(rng() * copy.length), 1)[0]!);
+  }
+  return out;
+}
+
+/** Keyword → attribute mapping so synthesized quests train sensible stats. */
+function attributesForText(text: string): Partial<Record<AttributeKey, number>> {
+  const t = text.toLowerCase();
+  if (/dsa|leetcode|competitive|algorithm|problem/.test(t)) return { INT: 12, FOC: 8 };
+  if (/system design|architecture/.test(t)) return { INT: 10, SKL: 10 };
+  if (/exercise|workout|run|gym|physical/.test(t)) return { STR: 12, END: 8 };
+  if (/job|resume|interview|application/.test(t)) return { CON: 10, SKL: 8 };
+  if (/linkedin|network|post|connect/.test(t)) return { CON: 12, SKL: 6 };
+  if (/project|build|ship|develop|github|code/.test(t)) return { SKL: 12, INT: 6 };
+  if (/language|studies|university|abroad/.test(t)) return { INT: 10, DIS: 8 };
+  if (/news|read|tools|tech|research|explore/.test(t)) return { INT: 8, CON: 4 };
+  if (/study|course|cert|learn|servicenow|aws|ml|ai/.test(t)) return { INT: 12, DIS: 6 };
+  return { DIS: 8, INT: 6 };
+}
+
+function fmtTime(h: number, m: number): string {
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+/** Synthesize a MAIN quest that advances one of the user's goal stages. */
+function goalQuest(g: GoalContext): PlannedQuest {
+  const remaining = g.targetUnits - g.progress;
+  // A day's quest advances ~5% of the stage (1..10 units).
+  const units = Math.max(1, Math.min(10, Math.round(g.targetUnits / 20)));
+  const nearDone = remaining <= units * 2;
+  return {
+    key: `goal:${g.stageId}`,
+    title: `Advance: ${g.stageTitle}`,
+    description: `${g.goalTitle} — ${g.stageDescription} (${g.progress}/${g.targetUnits} units done${nearDone ? ", the stage is within reach" : ""}).`,
+    type: "MAIN",
+    difficulty: nearDone ? "B" : "C",
+    category: "goal",
+    estMinutes: 45,
+    baseXp: nearDone ? 95 : 80,
+    attributeXp: attributesForText(`${g.goalTitle} ${g.stageTitle}`),
+    coinReward: 15,
+    failureNote: "The goal doesn't move unless you do.",
+    reason: `Direct strike on "${g.goalTitle}" — today's push on the ${g.stageTitle} stage.`,
+    stageId: g.stageId,
+    stageUnits: units,
+  };
+}
+
+/** Synthesize a DAILY quest that honors one of today's timetable blocks. */
+function routineQuest(b: RoutineBlockContext): PlannedQuest {
+  const window = `${fmtTime(b.startHour, b.startMin)}–${fmtTime(b.endHour, b.endMin)}`;
+  const minutes = Math.max(15, (b.endHour * 60 + b.endMin) - (b.startHour * 60 + b.startMin));
+  return {
+    key: `routine:${b.category.toLowerCase()}:${b.startHour}`,
+    title: `Honor the Schedule: ${b.activity}`,
+    description: `Execute your ${window} block ("${b.activity}") as planned — start on time, no drift.`,
+    type: "DAILY",
+    difficulty: "D",
+    category: "routine",
+    estMinutes: Math.min(minutes, 240),
+    baseXp: 45,
+    attributeXp: b.category === "EXERCISE" ? { STR: 10, END: 6, DIS: 4 } : { DIS: 10, FOC: 6 },
+    coinReward: 8,
+    failureNote: "The schedule only works when it's real.",
+    reason: `Drawn from today's routine — the ${window} "${b.activity}" block anchors your day.`,
+  };
+}
+
+/** Synthesize a DAILY quest from one of the user's own habits. */
+function habitQuest(h: HabitContext): PlannedQuest {
+  return {
+    key: `habit:${h.key}`,
+    title: h.title,
+    description: `Daily habit: ${h.title}. Small, repeatable, non-negotiable.`,
+    type: "DAILY",
+    difficulty: "D",
+    category: "habit",
+    estMinutes: 20,
+    baseXp: 40,
+    attributeXp: { DIS: 8, ...attributesForText(h.title) },
+    coinReward: 5,
+    streakKey: h.streakKey ?? undefined,
+    failureNote: "Missed habits compound just like kept ones.",
+    reason: "Your own habit — the engine keeps it in front of you.",
+  };
+}
+
 export function generateDailyQuests(ctx: QuestEngineContext): PlannedQuest[] {
   const rng = seededRng(`${ctx.dayKey}::${ctx.userId}`);
 
@@ -128,6 +268,14 @@ export function generateDailyQuests(ctx: QuestEngineContext): PlannedQuest[] {
     chosen.push({ ...(mutate ? mutate(t) : t), reason });
   };
 
+  /** Push a synthesized (non-template) quest. */
+  const pushPlanned = (q: PlannedQuest) => {
+    if (used.has(q.key)) return;
+    used.add(q.key);
+    usedCategories.set(q.category, (usedCategories.get(q.category) ?? 0) + 1);
+    chosen.push(q);
+  };
+
   // 1) Failing streaks get a gentle, prioritised re-entry quest.
   for (const streak of ctx.failingStreaks) {
     const t = QUEST_TEMPLATES.find((q) => q.streakKey === streak);
@@ -146,24 +294,64 @@ export function generateDailyQuests(ctx: QuestEngineContext): PlannedQuest[] {
     push("deep-work-1", "A deep work block to rebuild focus after high distraction.");
   }
 
-  // 3) Anchors. If struggling, trim to the 4 highest-leverage anchors.
-  const anchorsForToday = struggling ? ANCHOR_KEYS.slice(0, 4) : ANCHOR_KEYS;
-  for (const key of anchorsForToday) {
-    push(key, struggling
-      ? "Reduced anchor set — three tough days in a row. Win small, rebuild momentum."
-      : "Anchor quest — the habit that defines who you're becoming.");
+  // 3) Anchors — the user's OWN habits when they have any (rotating subset,
+  //    matched to a global template by streak when possible), otherwise the
+  //    global anchor set. If struggling, trim the anchor count.
+  const anchorReason = struggling
+    ? "Reduced anchor set — three tough days in a row. Win small, rebuild momentum."
+    : "Anchor quest — the habit that defines who you're becoming.";
+  const habits = ctx.habits ?? [];
+  if (habits.length > 0) {
+    const anchorCount = struggling ? 3 : 4;
+    for (const h of rotatingSample(habits, anchorCount, rng)) {
+      const tmpl = h.streakKey
+        ? QUEST_TEMPLATES.find((q) => q.streakKey === h.streakKey)
+        : undefined;
+      if (tmpl) push(tmpl.key, anchorReason);
+      else pushPlanned({ ...habitQuest(h), reason: anchorReason });
+    }
+  } else {
+    const anchorsForToday = struggling ? ANCHOR_KEYS.slice(0, 4) : ANCHOR_KEYS;
+    for (const key of anchorsForToday) push(key, anchorReason);
   }
 
   // 4) Recovery mode: add gentle recovery steps and stop early (light day).
   if (ctx.inRecovery) {
     push("meditate", "Recovery mode — a moment of stillness to reset.");
     push("mobility", "Recovery mode — move gently, no pressure.");
-    return finalize(chosen, ctx.inRecovery ? 5 : 8);
+    return finalize(chosen, 5);
   }
 
-  // 5) Random fill from the rest of the pool, weighted + biased toward the
-  //    weakest attribute, avoiding piling up a single category.
-  const cap = struggling ? 5 : thriving ? 10 : 9;
+  // 5) GOAL quests — rotate through the active Main Quests so every goal gets
+  //    regular pushes without flooding a single day.
+  const goals = ctx.goals ?? [];
+  for (const g of rotatingSample(goals, struggling ? 1 : 2, rng)) {
+    pushPlanned(goalQuest(g));
+  }
+
+  // 6) ROUTINE quests — pick meaningful blocks from today's schedule variant.
+  const ROUTINE_CATEGORIES = new Set(["STUDY", "EXERCISE", "NETWORKING", "WORK"]);
+  const eligibleBlocks = (ctx.routineBlocks ?? []).filter((b) => ROUTINE_CATEGORIES.has(b.category));
+  for (const b of rotatingSample(eligibleBlocks, struggling ? 1 : 2, rng)) {
+    pushPlanned(routineQuest(b));
+  }
+
+  // 7) Random fill from the rest of the pool, weighted + biased toward the
+  //    weakest attribute, avoiding piling up a single category. For users with
+  //    their own habit set, templates tied to a streak they don't pursue
+  //    (e.g. GATE study for a non-GATE account) are excluded from the pool.
+  const cap = struggling ? 6 : thriving ? 11 : 10;
+  const pursued = new Set(habits.map((h) => h.streakKey).filter(Boolean));
+  const streakOf = (q: QuestTemplateDef): string | null =>
+    q.streakKey ??
+    (q.key.startsWith("gate") || q.key === "mock-test" ? "gate"
+      : q.key === "wake-5am" ? "wake"
+      : null);
+  const fitsUser = (q: QuestTemplateDef): boolean => {
+    if (habits.length === 0) return true; // no personal habit set → whole pool
+    const s = streakOf(q);
+    return !s || pursued.has(s);
+  };
   const weakest = ctx.weakestAttribute as keyof QuestTemplateDef["attributeXp"] | undefined;
 
   const weightOf = (q: QuestTemplateDef): number => {
@@ -179,7 +367,7 @@ export function generateDailyQuests(ctx: QuestEngineContext): PlannedQuest[] {
   let guard = 0;
   while (chosen.length < cap && guard < 200) {
     guard++;
-    const candidates = QUEST_TEMPLATES.filter((q) => !used.has(q.key));
+    const candidates = QUEST_TEMPLATES.filter((q) => !used.has(q.key) && fitsUser(q));
     if (candidates.length === 0) break;
     const pick = weightedPick(candidates, rng, weightOf);
     if (!pick) break;
@@ -188,7 +376,7 @@ export function generateDailyQuests(ctx: QuestEngineContext): PlannedQuest[] {
       : "Side quest drawn for today's variety.");
   }
 
-  // 6) Thriving → upgrade one random side quest into a harder challenge.
+  // 8) Thriving → upgrade one random side quest into a harder challenge.
   if (thriving) {
     const sideChosen = chosen.filter((q) => q.type === "SIDE");
     if (sideChosen.length > 0) {
@@ -208,10 +396,14 @@ export function generateDailyQuests(ctx: QuestEngineContext): PlannedQuest[] {
   return finalize(chosen, cap);
 }
 
-/** Cap and return. Anchors are always kept even if over cap. */
+/** Cap and return. Anchors, habit quests and goal quests always survive the cap. */
 function finalize(chosen: PlannedQuest[], cap: number): PlannedQuest[] {
-  const anchors = chosen.filter((q) => (ANCHOR_KEYS as readonly string[]).includes(q.key));
-  const rest = chosen.filter((q) => !(ANCHOR_KEYS as readonly string[]).includes(q.key));
-  const limitedRest = rest.slice(0, Math.max(0, cap - anchors.length));
-  return [...anchors, ...limitedRest];
+  const isProtected = (q: PlannedQuest) =>
+    (ANCHOR_KEYS as readonly string[]).includes(q.key) ||
+    q.key.startsWith("habit:") ||
+    q.key.startsWith("goal:");
+  const protectedQuests = chosen.filter(isProtected);
+  const rest = chosen.filter((q) => !isProtected(q));
+  const limitedRest = rest.slice(0, Math.max(0, cap - protectedQuests.length));
+  return [...protectedQuests, ...limitedRest];
 }

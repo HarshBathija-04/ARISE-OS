@@ -44,6 +44,22 @@ habitsRoutes.post("/habits/log", async (req, res, next) => {
   }
 });
 
+habitsRoutes.get("/urges", async (req, res, next) => {
+  try {
+    const limit = Math.min(100, Number(req.query.limit ?? 20));
+    const { data, error } = await db
+      .from("urge_logs")
+      .select("*")
+      .eq("user_id", req.userId)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (error) throw new Error(error.message);
+    res.json({ ok: true, urges: data });
+  } catch (e) {
+    next(e);
+  }
+});
+
 habitsRoutes.post("/urges", async (req, res, next) => {
   try {
     const input = z

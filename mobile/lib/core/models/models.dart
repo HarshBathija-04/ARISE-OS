@@ -515,7 +515,13 @@ class BossBattle {
         currentHp: pickInt(json, ['currentHp', 'current_hp']),
         maxHp: pickInt(json, ['maxHp', 'max_hp'], fallback: 1),
         phase: pickInt(json, ['phase']),
-        logs: asList(json['logs']).map(BossBattleLog.fromJson).toList(),
+        // The API does not order the embedded logs — newest first here.
+        logs: asList(json['logs']).map(BossBattleLog.fromJson).toList()
+          ..sort((a, b) {
+            final at = a.createdAt, bt = b.createdAt;
+            if (at == null || bt == null) return at == bt ? 0 : (at == null ? 1 : -1);
+            return bt.compareTo(at);
+          }),
         boss: json['boss'] is Map<String, dynamic>
             ? BossInfo.fromJson(json['boss'] as Map<String, dynamic>)
             : null,

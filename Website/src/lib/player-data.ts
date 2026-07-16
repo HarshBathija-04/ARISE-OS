@@ -321,18 +321,17 @@ export async function getRecoveryHistory() {
     }));
 }
 
-export async function getUrgeLogs(_limit = 8) {
-  // The API does not expose a GET endpoint for urge logs (only POST /v1/urges),
-  // so the "Recent Urge Patterns" panel starts empty until the backend adds one.
-  return [] as {
-    id: string;
-    habitKey: string;
-    resisted: boolean;
-    trigger: string;
-    mood: string;
-    location: string;
-    createdAt: Date;
-  }[];
+export async function getUrgeLogs(limit = 8) {
+  const { urges } = await apiFetch<{ urges: any[] }>(`/v1/urges?limit=${limit}`);
+  return urges.map((u) => ({
+    id: u.id as string,
+    habitKey: u.habit_key as string,
+    resisted: u.resisted as boolean,
+    trigger: u.trigger as string,
+    mood: u.mood as string,
+    location: u.location as string,
+    createdAt: new Date(u.created_at),
+  }));
 }
 
 export async function getTimetableData(dayType?: "ALL" | "OFFICE" | "WFH" | "WEEKEND") {

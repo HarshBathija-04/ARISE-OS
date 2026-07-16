@@ -137,6 +137,19 @@ export async function completeQuest(userId: string, questId: string, result: Que
 
   await notify(userId, "QUEST_COMPLETED", "QUEST COMPLETED", `${quest.title} (+${award.xpAwarded} XP).`);
 
+  // Personalized goal quests advance their Main Quest stage.
+  if (quest.main_quest_stage_id && quest.stage_units > 0 && result !== "FAILED") {
+    const units = result === "COMPLETED"
+      ? quest.stage_units
+      : Math.max(1, Math.ceil(quest.stage_units / 2));
+    try {
+      await logMainQuestProgress(userId, quest.main_quest_stage_id, units);
+    } catch {
+      // Stage may have been deleted/completed since generation — the quest
+      // reward itself already went through, so don't fail the completion.
+    }
+  }
+
   // Boss damage from certain quest categories.
   await maybeDamageActiveBosses(userId, quest.category, result);
 
@@ -218,19 +231,105 @@ export async function logMainQuestProgress(
 
 // ─────────────────── Daily quest generation ───────────────────
 
-/**
- * Idempotently ensure today's quests exist. Uses recent completion history and
- * streak/distraction state to adapt the plan. Safe to call on dashboard load.
- */
-export async function ensureTodayQuests(userId: string) {
-  const today = gameDay();
-  const { count: existing, error: exErr } = await db
-    .from("quests")
-    .select("id", { count: "exact", head: true })
+/** Active Main Quests → the next incomplete stage of each (goal context). */
+async function activeGoals(userId: string) {
+  const { data, error } = await db
+    .from("main_quests")
+    .select("title, stages:main_quest_stages(*)")
     .eq("user_id", userId)
-    .eq("assigned_date", today.toISOString());
+    .eq("active", true)
+    .order("order", { ascending: true });
+  if (error) throw new Error(error.message);
+  const goals = [];
+  for (const mq of data ?? []) {
+    const stages = ((mq.stages ?? []) as Record<string, any>[])
+      .sort((a, b) => a.order - b.order);
+    const next = stages.find((s) => !s.completed);
+    if (!next) continue; // goal fully cleared
+    goals.push({
+      goalTitle: mq.title as string,
+      stageId: next.id as string,
+      stageTitle: next.title as string,
+      stageDescription: next.description as string,
+      progress: next.progress as number,
+      targetUnits: next.target_units as number,
+    });
+  }
+  return goals;
+}
+
+/** Timetable blocks for the day-type variant inferred for `day`. */
+async function routineBlocksFor(userId: string, day: Date) {
+  const { data, error } = await db
+    .from("timetable_blocks")
+    .select("activity, category, start_hour, start_min, end_hour, end_min, day_type")
+    .eq("user_id", userId);
+  if (error) throw new Error(error.message);
+  const blocks = (data ?? []) as Record<string, any>[];
+  // WEEKEND on Sat/Sun (game day is IST-anchored); on weekdays prefer the
+  // OFFICE variant, else WFH — whichever the user actually keeps.
+  const wd = day.getUTCDay();
+  const weekend = wd === 0 || wd === 6;
+  const has = (t: string) => blocks.some((b) => b.day_type === t);
+  const variant = weekend && has("WEEKEND") ? "WEEKEND"
+    : !weekend && has("OFFICE") ? "OFFICE"
+    : !weekend && has("WFH") ? "WFH"
+    : "ALL";
+  return blocks
+    .filter((b) => b.day_type === "ALL" || b.day_type === variant)
+    .map((b) => ({
+      activity: b.activity as string,
+      category: b.category as string,
+      startHour: b.start_hour as number,
+      startMin: b.start_min as number,
+      endHour: b.end_hour as number,
+      endMin: b.end_min as number,
+    }));
+}
+
+/** The user's active BUILD habits (shadow habits are tracked elsewhere). */
+async function activeHabits(userId: string) {
+  const { data, error } = await db
+    .from("habits")
+    .select("key, title, streak_key")
+    .eq("user_id", userId)
+    .eq("active", true)
+    .eq("kind", "BUILD");
+  if (error) throw new Error(error.message);
+  return (data ?? []).map((h) => ({
+    key: h.key as string,
+    title: h.title as string,
+    streakKey: h.streak_key as string | null,
+  }));
+}
+
+/**
+ * Idempotently ensure the quest set for `day` exists (defaults to today; the
+ * noon cron passes tomorrow to pre-generate it). Uses recent completion
+ * history, streak/distraction state, and the user's goals/routine/habits to
+ * build a personalized plan. Safe to call on dashboard load.
+ *
+ * `regenerate` discards the day's still-ACTIVE quests and redraws the set
+ * (already-completed quests are kept and their titles are not re-issued).
+ */
+export async function ensureQuestsForDay(userId: string, day: Date, regenerate = false) {
+  if (regenerate) {
+    const { error: delErr } = await db
+      .from("quests")
+      .delete()
+      .eq("user_id", userId)
+      .eq("assigned_date", day.toISOString())
+      .eq("status", "ACTIVE");
+    if (delErr) throw new Error(delErr.message);
+  }
+  const { data: existingRows, error: exErr } = await db
+    .from("quests")
+    .select("id, title")
+    .eq("user_id", userId)
+    .eq("assigned_date", day.toISOString());
   if (exErr) throw new Error(exErr.message);
-  if ((existing ?? 0) > 0) return { created: 0 };
+  if ((existingRows?.length ?? 0) > 0 && !regenerate) return { created: 0 };
+  const existingTitles = new Set((existingRows ?? []).map((r) => r.title as string));
 
   // Build engine context from recent data.
   const recent = await recentCompletionRatios(userId, 7);
@@ -250,9 +349,14 @@ export async function ensureTodayQuests(userId: string) {
     .maybeSingle();
   if (setErr) throw new Error(setErr.message);
   const weakest = await weakestAttributeKey(userId);
+  const [goals, routineBlocks, habits] = await Promise.all([
+    activeGoals(userId),
+    routineBlocksFor(userId, day),
+    activeHabits(userId),
+  ]);
 
   const planned = generateDailyQuests({
-    dayKey: dayKey(),
+    dayKey: dayKey(day),
     userId,
     recentCompletion: recent,
     failingStreaks,
@@ -260,7 +364,10 @@ export async function ensureTodayQuests(userId: string) {
     inRecovery,
     difficultyBias: settings?.difficulty_bias ?? 1,
     weakestAttribute: weakest,
-  });
+    goals,
+    routineBlocks,
+    habits,
+  }).filter((q) => !existingTitles.has(q.title)); // don't re-issue kept quests
 
   const { data: templates, error: tErr } = await db.from("quest_templates").select("*");
   if (tErr) throw new Error(tErr.message);
@@ -282,15 +389,28 @@ export async function ensureTodayQuests(userId: string) {
       coin_reward: q.coinReward ?? 0,
       streak_key: q.streakKey ?? null,
       failure_note: q.failureNote ?? "",
-      assigned_date: today.toISOString(),
+      assigned_date: day.toISOString(),
+      main_quest_stage_id: q.stageId ?? null,
+      stage_units: q.stageUnits ?? 0,
     };
   });
-  const { error: insErr } = await db.from("quests").insert(rows);
-  if (insErr) throw new Error(insErr.message);
+  if (rows.length > 0) {
+    const { error: insErr } = await db.from("quests").insert(rows);
+    if (insErr) throw new Error(insErr.message);
+  }
 
-  await notify(userId, "QUEST_GENERATED", "DAILY QUESTS GENERATED",
-    `${planned.length} quests await. Complete them to advance.`);
+  const future = day.getTime() > gameDay().getTime();
+  await notify(userId, "QUEST_GENERATED",
+    future ? "TOMORROW'S QUESTS FORGED" : "DAILY QUESTS GENERATED",
+    future
+      ? `${planned.length} quests are prepared for ${dayKey(day)}. They unlock at midnight.`
+      : `${planned.length} quests await. Complete them to advance.`);
   return { created: planned.length };
+}
+
+/** Ensure today's quests exist (lazy safety net used by routes/bootstrap). */
+export async function ensureTodayQuests(userId: string, regenerate = false) {
+  return ensureQuestsForDay(userId, gameDay(), regenerate);
 }
 
 async function recentCompletionRatios(userId: string, days: number): Promise<number[]> {
@@ -318,19 +438,30 @@ async function recentCompletionRatios(userId: string, days: number): Promise<num
 }
 
 async function failingStreakKeys(userId: string): Promise<string[]> {
-  const { data: streaks, error } = await db.from("streaks").select("*").eq("user_id", userId);
+  const [{ data: streaks, error }, habits] = await Promise.all([
+    db.from("streaks").select("*").eq("user_id", userId),
+    activeHabits(userId),
+  ]);
   if (error) throw new Error(error.message);
+  // Only streaks the user actively pursues (via an active habit) can "fail" —
+  // a seeded-but-unused streak is noise, not a broken commitment.
+  const pursued = new Set(habits.map((h) => h.streakKey).filter(Boolean));
   const today = gameDay();
   const yesterday = new Date(today);
   yesterday.setUTCDate(yesterday.getUTCDate() - 1);
   const priority = ["wake", "workout", "dsa", "gate"];
   return (streaks ?? [])
-    .filter((s) => priority.includes(s.key))
+    .filter((s) => pursued.has(s.key))
     .filter((s) => {
-      if (!s.last_date) return true; // never done → worth prompting
+      if (!s.last_date) return false; // never started → nothing to re-enter
       const last = gameDay(new Date(s.last_date));
       return last.getTime() < yesterday.getTime();
     })
+    .sort((a, b) => {
+      const pa = priority.indexOf(a.key); const pb = priority.indexOf(b.key);
+      return (pa === -1 ? 99 : pa) - (pb === -1 ? 99 : pb);
+    })
+    .slice(0, 4)
     .map((s) => s.key as string);
 }
 

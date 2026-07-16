@@ -295,7 +295,17 @@ async function main() {
     );
     check(error, "extra habits");
   }
-  console.log(`✓ ${EXTRA_HABITS.length} habits + ${EXTRA_STREAKS.length} streaks added`);
+  // Default habits that don't fit this user (wakes at 6am, no GATE prep) —
+  // deactivated so the quest engine never anchors on them.
+  {
+    const { error } = await db
+      .from("habits")
+      .update({ active: false })
+      .eq("user_id", userId)
+      .in("key", ["wake-5am", "gate-study"]);
+    check(error, "deactivate unfit default habits");
+  }
+  console.log(`✓ ${EXTRA_HABITS.length} habits + ${EXTRA_STREAKS.length} streaks added (wake-5am/gate-study deactivated)`);
 
   // 5. Timetables: replace everything with the three day-type schedules
   {

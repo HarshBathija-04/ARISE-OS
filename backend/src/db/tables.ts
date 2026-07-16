@@ -126,6 +126,8 @@ export interface QuestRow {
   assigned_date: string;
   deadline: string | null;
   main_quest_stage_id: string | null;
+  /** Progress units logged on main_quest_stage_id when this quest completes. */
+  stage_units: number;
   boss_battle_id: string | null;
   created_at: string;
   updated_at: string;
