@@ -25,7 +25,7 @@ Configuration is injected via `--dart-define`:
 | ------------------- | -------------------------------- | ------------------------ |
 | `SUPABASE_URL`      | Supabase project URL             | — (required)             |
 | `SUPABASE_ANON_KEY` | Supabase anon/public key         | — (required)             |
-| `API_BASE_URL`      | Express API base URL             | `http://10.0.2.2:4000`   |
+| `API_BASE_URL`      | Express API base URL             | `https://arise-os.onrender.com` |
 
 `10.0.2.2` is the Android-emulator alias for the host machine's localhost.
 For an iOS simulator use `http://localhost:4000`; for a physical device use
@@ -37,6 +37,20 @@ flutter run \
   --dart-define=SUPABASE_ANON_KEY=<anon-key> \
   --dart-define=API_BASE_URL=http://10.0.2.2:4000
 ```
+
+## Release APK
+
+Release builds must include the Supabase values at compile time. Create a local
+`env.release.json` from `env.release.example.json` and fill in the real project
+URL and anon key:
+
+```bash
+flutter build apk --release --dart-define-from-file=env.release.json
+```
+
+Android release builds fail fast if `SUPABASE_URL` or `SUPABASE_ANON_KEY` is
+missing, because an APK without them can install but crash before the login
+screen appears.
 
 ## Architecture
 

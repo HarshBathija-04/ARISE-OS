@@ -48,8 +48,8 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
 function Brand() {
   return (
     <div className="flex items-center gap-2 px-5 py-5">
-      <div className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-arc-blue/40 bg-arc-blue/10 shadow-glow">
-        <Zap className="h-5 w-5 text-arc-blue" />
+      <div className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-arc-blue/40 bg-arc-blue/10 shadow-glow p-1">
+        <img src="/logo.png" alt="Logo" className="h-full w-full object-contain" />
       </div>
       <div className="leading-tight">
         <div className="font-display text-sm font-bold tracking-tight text-slate-100">

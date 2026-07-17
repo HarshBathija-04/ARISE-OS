@@ -1,3 +1,5 @@
+import java.util.Base64
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
@@ -8,6 +10,37 @@ plugins {
 // project still builds before the Firebase project is wired up.
 if (file("google-services.json").exists()) {
     apply(plugin = "com.google.gms.google-services")
+}
+
+fun flutterDartDefines(): Map<String, String> {
+    val encodedDefines = (project.findProperty("dart-defines") as? String).orEmpty()
+    if (encodedDefines.isBlank()) return emptyMap()
+
+    return encodedDefines
+        .split(",")
+        .mapNotNull { encoded ->
+            val decoded = runCatching {
+                String(Base64.getDecoder().decode(encoded), Charsets.UTF_8)
+            }.getOrNull() ?: return@mapNotNull null
+            val parts = decoded.split("=", limit = 2)
+            if (parts.size == 2) parts[0] to parts[1] else null
+        }
+        .toMap()
+}
+
+val validateReleaseDartDefines by tasks.registering {
+    doLast {
+        val defines = flutterDartDefines()
+        val missing = listOf("SUPABASE_URL", "SUPABASE_ANON_KEY")
+            .filter { defines[it].isNullOrBlank() }
+
+        if (missing.isNotEmpty()) {
+            throw GradleException(
+                "Release APK is missing required Dart defines: ${missing.joinToString(", ")}. " +
+                    "Build with: flutter build apk --release --dart-define-from-file=env.release.json"
+            )
+        }
+    }
 }
 
 android {
@@ -34,11 +67,20 @@ android {
 
     buildTypes {
         release {
+            // WorkManager/Room uses generated classes via reflection during
+            // AndroidX Startup. R8 was stripping the release constructor and
+            // crashing before Flutter rendered the first frame.
+            isMinifyEnabled = false
+            isShrinkResources = false
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+}
+
+tasks.matching { it.name == "preReleaseBuild" }.configureEach {
+    dependsOn(validateReleaseDartDefines)
 }
 
 kotlin {
