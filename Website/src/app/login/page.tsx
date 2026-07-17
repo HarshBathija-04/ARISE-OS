@@ -75,8 +75,8 @@ export default function LoginPage() {
       <div className="absolute inset-0 bg-radial-arc" />
       <div className="relative w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center">
-          <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl border border-arc-blue/40 bg-arc-blue/10 shadow-glow">
-            <Zap className="h-8 w-8 text-arc-blue" />
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-arc-blue/10 ring-1 ring-arc-blue/30">
+            <img src="/logo.png" alt="Arise OS Logo" className="h-10 w-10 object-contain" />
           </div>
           <h1 className="mt-4 font-display text-xl font-bold tracking-tight">
             ARISE<span className="text-arc-blue">//</span>OS

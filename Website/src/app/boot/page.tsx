@@ -38,8 +38,8 @@ export default function BootPage() {
           transition={{ type: "spring", stiffness: 200, damping: 18 }}
           className="mb-8 flex flex-col items-center"
         >
-          <div className="relative flex h-20 w-20 items-center justify-center rounded-2xl border border-arc-blue/40 bg-arc-blue/10 shadow-glow">
-            <Zap className="h-10 w-10 text-arc-blue" />
+          <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-arc-blue/10">
+            <img src="/logo.png" alt="Arise OS Logo" className="h-10 w-10 object-contain" />
             <span className="absolute inset-0 animate-pulse-glow rounded-2xl ring-1 ring-arc-blue/40" />
           </div>
           <h1 className="mt-5 font-display text-2xl font-bold tracking-tight">
