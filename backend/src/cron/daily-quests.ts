@@ -41,13 +41,19 @@ export async function runNextDayQuestGeneration() {
   return forEachUser("next-day-quests", (id) => ensureQuestsForDay(id, tomorrow));
 }
 
+export async function runDailyQuestRegeneration() {
+  return forEachUser("regenerate-today-quests", (id) => ensureTodayQuests(id, true));
+}
+
 export function registerDailyQuestCron() {
   cron.schedule("30 6 * * *", async () => {
     try {
+      const regen = await runDailyQuestRegeneration();
+      console.log(`regenerate-today-quests cron: ${regen.created} quests across ${regen.users} users`);
       const res = await runNextDayQuestGeneration();
       console.log(`next-day-quests cron: ${res.created} quests across ${res.users} users`);
     } catch (e) {
-      console.error("next-day-quests cron failed", e);
+      console.error("12PM cron failed", e);
     }
   });
   cron.schedule("30 18 * * *", async () => {

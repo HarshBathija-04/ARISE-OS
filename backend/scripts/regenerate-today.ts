@@ -1,6 +1,6 @@
 /**
  * Redraw today's quest set with the personalized engine for the given
- * accounts (default: both known users). Completed quests are kept; only
+ * accounts (default: all users). Completed quests are kept; only
  * still-ACTIVE quests are discarded and regenerated.
  *
  * Run: npx tsx scripts/regenerate-today.ts [email ...]
@@ -9,12 +9,15 @@ import { db } from "../src/db/supabase.js";
 import { ensureTodayQuests } from "../src/services/quest.service.js";
 import { gameDay } from "../src/engine/date.js";
 
-const emails = process.argv.slice(2).length
-  ? process.argv.slice(2)
-  : ["demo@arise.os"];
+const emails = process.argv.slice(2);
 
 async function main() {
-  const { data: users, error } = await db.from("users").select("id, email").in("email", emails);
+  let query = db.from("users").select("id, email");
+  if (emails.length > 0) {
+    query = query.in("email", emails);
+  }
+  
+  const { data: users, error } = await query;
   if (error) throw new Error(error.message);
 
   for (const user of users ?? []) {
