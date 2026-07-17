@@ -11,7 +11,7 @@ import { gameDay } from "../src/engine/date.js";
 
 const emails = process.argv.slice(2).length
   ? process.argv.slice(2)
-  : ["harsh004bathija@gmail.com", "aaditya.mittal@gmail.com"];
+  : ["demo@arise.os"];
 
 async function main() {
   const { data: users, error } = await db.from("users").select("id, email").in("email", emails);
