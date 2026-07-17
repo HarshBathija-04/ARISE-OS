@@ -12,7 +12,7 @@ class ApiException implements Exception {
   String toString() => message;
 }
 
-const _defaultBaseUrl = 'http://10.0.2.2:4000'; // Android emulator loopback.
+const _defaultBaseUrl = 'https://arise-os.onrender.com'; // Deployed backend.
 
 const apiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
