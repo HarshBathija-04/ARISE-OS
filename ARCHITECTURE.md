@@ -97,8 +97,7 @@ variant; block CRUD accepts `dayType`). A block missed for a rare valid reason
 can be **excused**: `POST /v1/timetable/blocks/:id/state` with
 `{state: "EXCUSED", reason}` — awards no XP and is recorded distinctly from
 MISSED/SKIPPED. New categories: WORK, COMMUTE, NETWORKING.
-`scripts/seed-aaditya.ts` shows a fully personalized account seed (goal-track
-main quests, custom habits/streaks, all three day-type timetables).
+
 
 ## 3. Website (`Website/`)
 
