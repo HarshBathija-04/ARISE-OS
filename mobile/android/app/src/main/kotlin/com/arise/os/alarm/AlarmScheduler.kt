@@ -139,7 +139,7 @@ object AlarmScheduler {
                 val piAlarm = pendingIntent(context, block, date, TYPE_ALARM, dayOffset)
                 // Use setAlarmClock to bypass Doze mode rate limiting for the actual alarm
                 // showIntent MUST be an Activity PendingIntent, or it crashes on Android 12+
-                val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+                val launchIntent = Intent(context, Class.forName("com.arise.os.MainActivity"))
                 val showIntent = PendingIntent.getActivity(
                     context,
                     requestCode(block.optString("id"), TYPE_ALARM, dayOffset),
@@ -214,7 +214,7 @@ object AlarmScheduler {
         
         val fireAtMs = System.currentTimeMillis() + delayMs
         if (type == TYPE_ALARM) {
-            val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+            val launchIntent = Intent(context, Class.forName("com.arise.os.MainActivity"))
             val showIntent = PendingIntent.getActivity(
                 context,
                 requestCode(block.optString("id"), type, 2),
