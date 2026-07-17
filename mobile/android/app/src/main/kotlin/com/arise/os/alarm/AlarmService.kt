@@ -175,21 +175,43 @@ class AlarmService : Service() {
     private fun startSound(store: AlarmStore) {
         val config = store.settings().optJSONObject("alarmConfig") ?: JSONObject()
         val volume = config.optDouble("volume", 0.8).toFloat().coerceIn(0f, 1f)
-        val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-            ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
-            ?: return
-        player = MediaPlayer().apply {
-            setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_ALARM)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build(),
-            )
-            setDataSource(this@AlarmService, uri)
-            isLooping = true
-            setVolume(volume, volume)
-            prepare()
-            start()
+        var uri = android.net.Uri.parse("android.resource://${packageName}/raw/harry_potter_theme")
+        if (uri == null) {
+            uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+                ?: return
+        }
+        try {
+            player = MediaPlayer().apply {
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ALARM)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build(),
+                )
+                setDataSource(this@AlarmService, uri)
+                isLooping = true
+                setVolume(volume, volume)
+                prepare()
+                start()
+            }
+        } catch (e: Exception) {
+            val fallbackUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+                ?: return
+            player = MediaPlayer().apply {
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ALARM)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build(),
+                )
+                setDataSource(this@AlarmService, fallbackUri)
+                isLooping = true
+                setVolume(volume, volume)
+                prepare()
+                start()
+            }
         }
     }
 

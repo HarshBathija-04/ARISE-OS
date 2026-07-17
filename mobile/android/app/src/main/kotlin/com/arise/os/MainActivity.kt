@@ -33,6 +33,7 @@ class MainActivity : FlutterActivity() {
                     if (planJson == null) {
                         result.error("ARG", "plan missing", null)
                     } else {
+                        AlarmScheduler.cancelAll(this, store.blocks())
                         store.savePlan(planJson)
                         store.setDirty(false)
                         val scheduled = AlarmScheduler.rescheduleAll(this)
