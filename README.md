@@ -18,6 +18,14 @@ Arise-OS/
 - **Mobile frontend**: Flutter app using Riverpod, connects to the same Express API with a Supabase JWT bearer token.
 - **Timetable** is fully relational and shared by both frontends (`TimetableBlock` / `TimetableBlockLog` / `StudyLog`).
 
+## Demo
+
+You can try out the live web dashboard here: **[https://solo-os-seven.vercel.app](https://solo-os-seven.vercel.app)**
+
+**Demo Credentials:**
+- **Email:** `demo@arise.os`
+- **Password:** `password123`
+
 ## Getting started
 
 ### Backend

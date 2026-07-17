@@ -163,18 +163,19 @@ object AlarmScheduler {
         return scheduled
     }
 
-    fun cancelAll(context: Context) {
+    fun cancelAll(context: Context, oldBlocks: org.json.JSONArray? = null) {
         val store = AlarmStore(context)
-        val blocks = store.blocks()
+        val blocks = oldBlocks ?: store.blocks()
         val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         for (i in 0 until blocks.length()) {
             val block = blocks.optJSONObject(i) ?: continue
             for (type in intArrayOf(TYPE_ALARM, TYPE_PRE)) {
-                for (dayOffset in 0..1) {
+                for (dayOffset in 0..2) {
                     am.cancel(pendingIntent(context, block, "", type, dayOffset))
                 }
             }
         }
+        context.stopService(Intent(context, AlarmService::class.java))
     }
 
     /** Re-fire an alarm after `minutes` (snooze) or `gapSec` (missed-attempt repeat). */

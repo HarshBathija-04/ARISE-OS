@@ -79,6 +79,12 @@ begin
   delete from activity_logs where user_id = p_user_id;
   delete from habit_logs where user_id = p_user_id;
   delete from urge_logs where user_id = p_user_id;
+  delete from notification_events where user_id = p_user_id;
+  delete from alarm_events where user_id = p_user_id;
+  delete from scheduled_notifications where user_id = p_user_id;
+  delete from study_logs where user_id = p_user_id;
+  delete from timetable_block_logs where user_id = p_user_id;
+  delete from timetable_blocks where user_id = p_user_id;
   delete from coin_transactions where user_id = p_user_id;
   delete from level_progress where user_id = p_user_id;
   delete from attribute_history where user_id = p_user_id;
