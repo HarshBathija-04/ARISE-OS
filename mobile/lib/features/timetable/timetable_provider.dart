@@ -8,6 +8,22 @@ import '../dashboard/dashboard_provider.dart';
 /// included by the API, so only the concrete variants are selectable.
 const timetableDayTypes = ['OFFICE', 'WFH', 'WEEKEND'];
 
+const timetableCategories = [
+  'STUDY',
+  'EXERCISE',
+  'MORNING_ROUTINE',
+  'BATH',
+  'BREAKFAST',
+  'LUNCH',
+  'DINNER',
+  'GAMING',
+  'BREAK',
+  'SLEEP',
+  'WORK',
+  'COMMUTE',
+  'NETWORKING',
+];
+
 /// Selected schedule variant. Defaults to WEEKEND on Sat/Sun, OFFICE
 /// otherwise.
 final timetableDayTypeProvider = StateProvider<String>((ref) {
@@ -70,6 +86,13 @@ final timetableProvider = FutureProvider<TimetableData>((ref) async {
   );
 });
 
+/// GET /v1/settings → raw settings map (reused from alarm_settings_screen).
+final userSettingsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
+  final api = ref.watch(apiClientProvider);
+  final json = await api.get('/v1/settings');
+  return (json['settings'] as Map<String, dynamic>?) ?? const {};
+});
+
 class TimetableActions {
   TimetableActions(this._ref);
   final Ref _ref;
@@ -103,6 +126,64 @@ class TimetableActions {
       if (notes != null && notes.isNotEmpty) 'notes': notes,
     });
     _invalidate();
+  }
+
+  /// POST /v1/timetable/blocks — add a new block.
+  Future<void> addBlock({
+    required int startHour,
+    required int startMin,
+    required int endHour,
+    required int endMin,
+    required String activity,
+    required String category,
+    String? dayType,
+  }) async {
+    await _ref.read(apiClientProvider).post('/v1/timetable/blocks', body: {
+      'startHour': startHour,
+      'startMin': startMin,
+      'endHour': endHour,
+      'endMin': endMin,
+      'activity': activity,
+      'category': category,
+      if (dayType != null) 'dayType': dayType,
+    });
+    _invalidate();
+  }
+
+  /// PATCH /v1/timetable/blocks/:id — edit an existing block.
+  Future<void> editBlock(String blockId, {
+    int? startHour,
+    int? startMin,
+    int? endHour,
+    int? endMin,
+    String? activity,
+    String? category,
+    String? dayType,
+  }) async {
+    await _ref.read(apiClientProvider).patch('/v1/timetable/blocks/$blockId', body: {
+      if (startHour != null) 'startHour': startHour,
+      if (startMin != null) 'startMin': startMin,
+      if (endHour != null) 'endHour': endHour,
+      if (endMin != null) 'endMin': endMin,
+      if (activity != null) 'activity': activity,
+      if (category != null) 'category': category,
+      if (dayType != null) 'dayType': dayType,
+    });
+    _invalidate();
+  }
+
+  /// DELETE /v1/timetable/blocks/:id — remove a block.
+  Future<void> deleteBlock(String blockId) async {
+    await _ref.read(apiClientProvider).delete('/v1/timetable/blocks/$blockId');
+    _invalidate();
+  }
+
+  /// PATCH /v1/settings — toggle timetable alarms on/off.
+  Future<void> toggleAlarms(bool enabled) async {
+    await _ref.read(apiClientProvider).patch('/v1/settings', body: {
+      'timetableAlarmsEnabled': enabled,
+    });
+    _ref.invalidate(userSettingsProvider);
   }
 
   void _invalidate() {

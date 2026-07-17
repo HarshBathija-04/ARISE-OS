@@ -83,23 +83,35 @@ IconData _categoryIcon(String category) {
   }
 }
 
-class TimetableScreen extends ConsumerWidget {
+String _categoryLabel(String category) {
+  switch (category) {
+    case 'MORNING_ROUTINE':
+      return 'Morning Routine';
+    default:
+      return category[0] + category.substring(1).toLowerCase();
+  }
+}
+
+class TimetableScreen extends ConsumerStatefulWidget {
   const TimetableScreen({super.key});
 
-  Future<void> _setState(BuildContext context, WidgetRef ref,
-      TimetableBlock block, String state,
-      {String? reason}) async {
+  @override
+  ConsumerState<TimetableScreen> createState() => _TimetableScreenState();
+}
+
+class _TimetableScreenState extends ConsumerState<TimetableScreen> {
+  Future<void> _setState(
+      TimetableBlock block, String state, {String? reason}) async {
     try {
       await ref
           .read(timetableActionsProvider)
           .setState(block.id, state, reason: reason);
     } catch (e) {
-      if (context.mounted) showErrorSnack(context, e);
+      if (mounted) showErrorSnack(context, e);
     }
   }
 
-  void _showActions(
-      BuildContext context, WidgetRef ref, TimetableBlock block) {
+  void _showActions(TimetableBlock block) {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: AriseColors.panel,
@@ -124,7 +136,7 @@ class TimetableScreen extends ConsumerWidget {
               title: const Text('MARK COMPLETED'),
               onTap: () {
                 Navigator.pop(sheetContext);
-                _setState(context, ref, block, 'COMPLETED');
+                _setState(block, 'COMPLETED');
               },
             ),
             ListTile(
@@ -133,7 +145,7 @@ class TimetableScreen extends ConsumerWidget {
               title: const Text('SKIP'),
               onTap: () {
                 Navigator.pop(sheetContext);
-                _setState(context, ref, block, 'SKIPPED');
+                _setState(block, 'SKIPPED');
               },
             ),
             ListTile(
@@ -142,7 +154,7 @@ class TimetableScreen extends ConsumerWidget {
               title: const Text('RAISE EXCEPTION (EXCUSE)'),
               onTap: () {
                 Navigator.pop(sheetContext);
-                _showExcuseDialog(context, ref, block);
+                _showExcuseDialog(block);
               },
             ),
             if (block.category == 'STUDY')
@@ -151,9 +163,26 @@ class TimetableScreen extends ConsumerWidget {
                 title: const Text('LOG STUDY SESSION'),
                 onTap: () {
                   Navigator.pop(sheetContext);
-                  _showStudyLog(context, ref, block);
+                  _showStudyLog(block);
                 },
               ),
+            const Divider(height: 1),
+            ListTile(
+              leading: const Icon(Icons.edit_outlined, color: AriseColors.blue),
+              title: const Text('EDIT BLOCK'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _showBlockEditor(block: block);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline, color: AriseColors.danger),
+              title: const Text('DELETE BLOCK'),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _confirmDelete(block);
+              },
+            ),
             const SizedBox(height: 8),
           ],
         ),
@@ -161,8 +190,39 @@ class TimetableScreen extends ConsumerWidget {
     );
   }
 
-  void _showExcuseDialog(
-      BuildContext context, WidgetRef ref, TimetableBlock block) {
+  void _confirmDelete(TimetableBlock block) {
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('DELETE BLOCK',
+            style: Theme.of(context).textTheme.titleSmall),
+        content: Text(
+          'Delete "${block.activity}" (${block.timeLabel})?\nThis cannot be undone.',
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('CANCEL'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AriseColors.danger),
+            onPressed: () async {
+              Navigator.of(dialogContext).pop();
+              try {
+                await ref.read(timetableActionsProvider).deleteBlock(block.id);
+              } catch (e) {
+                if (mounted) showErrorSnack(context, e);
+              }
+            },
+            child: const Text('DELETE'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showExcuseDialog(TimetableBlock block) {
     final controller = TextEditingController();
     showDialog<void>(
       context: context,
@@ -199,7 +259,7 @@ class TimetableScreen extends ConsumerWidget {
               final reason = controller.text.trim();
               if (reason.isEmpty) return;
               Navigator.of(dialogContext).pop();
-              _setState(context, ref, block, 'EXCUSED', reason: reason);
+              _setState(block, 'EXCUSED', reason: reason);
             },
             child: const Text('EXCUSE'),
           ),
@@ -208,8 +268,7 @@ class TimetableScreen extends ConsumerWidget {
     ).then((_) => controller.dispose());
   }
 
-  void _showStudyLog(
-      BuildContext context, WidgetRef ref, TimetableBlock block) {
+  void _showStudyLog(TimetableBlock block) {
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -226,13 +285,63 @@ class TimetableScreen extends ConsumerWidget {
     );
   }
 
+  void _showBlockEditor({TimetableBlock? block}) {
+    final dayType = ref.read(timetableDayTypeProvider);
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AriseColors.panel,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
+        ),
+        child: _BlockEditorSheet(block: block, defaultDayType: dayType),
+      ),
+    );
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final timetable = ref.watch(timetableProvider);
     final dayType = ref.watch(timetableDayTypeProvider);
+    final settings = ref.watch(userSettingsProvider);
+
+    final alarmsEnabled = settings.maybeWhen(
+      data: (s) => (s['timetable_alarms_enabled'] as bool?) ?? true,
+      orElse: () => true,
+    );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('DAILY SCHEDULE')),
+      appBar: AppBar(
+        title: const Text('DAILY SCHEDULE'),
+        actions: [
+          Icon(
+            alarmsEnabled ? Icons.alarm_on : Icons.alarm_off,
+            color: alarmsEnabled ? AriseColors.blue : AriseColors.textDim,
+            size: 20,
+          ),
+          Switch(
+            value: alarmsEnabled,
+            activeColor: AriseColors.blue,
+            onChanged: (v) async {
+              try {
+                await ref.read(timetableActionsProvider).toggleAlarms(v);
+              } catch (e) {
+                if (mounted) showErrorSnack(context, e);
+              }
+            },
+          ),
+          const SizedBox(width: 4),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: AriseColors.blue,
+        onPressed: () => _showBlockEditor(),
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
       body: Column(
         children: [
           Padding(
@@ -281,11 +390,11 @@ class TimetableScreen extends ConsumerWidget {
                 data: (data) => data.blocks.isEmpty
                     ? ListView(
                         physics: const AlwaysScrollableScrollPhysics(),
-                        children: const [
-                          SizedBox(height: 120),
-                          Center(
+                        children: [
+                          const SizedBox(height: 120),
+                          const Center(
                             child: Text(
-                              'NO TIMETABLE CONFIGURED.\nSET IT UP ON THE WEB APP.',
+                              'NO BLOCKS YET.\nTAP + TO ADD YOUR FIRST BLOCK.',
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                   color: AriseColors.textDim, letterSpacing: 2),
@@ -304,7 +413,7 @@ class TimetableScreen extends ConsumerWidget {
                             block: block,
                             state: state,
                             excuse: data.excuseFor(block.id),
-                            onTap: () => _showActions(context, ref, block),
+                            onTap: () => _showActions(block),
                           );
                         },
                       ),
@@ -419,6 +528,209 @@ class _BlockTile extends StatelessWidget {
     );
   }
 }
+
+// ── Block editor (add / edit) ─────────────────────────────────────
+
+class _BlockEditorSheet extends ConsumerStatefulWidget {
+  const _BlockEditorSheet({this.block, required this.defaultDayType});
+
+  final TimetableBlock? block;
+  final String defaultDayType;
+
+  @override
+  ConsumerState<_BlockEditorSheet> createState() => _BlockEditorSheetState();
+}
+
+class _BlockEditorSheetState extends ConsumerState<_BlockEditorSheet> {
+  late final TextEditingController _activity;
+  late String _category;
+  late String _dayType;
+  late TimeOfDay _start;
+  late TimeOfDay _end;
+  bool _saving = false;
+
+  bool get _isEdit => widget.block != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final b = widget.block;
+    _activity = TextEditingController(text: b?.activity ?? '');
+    _category = b?.category ?? 'STUDY';
+    _dayType = b?.dayType ?? widget.defaultDayType;
+    _start = b != null
+        ? TimeOfDay(hour: b.startHour, minute: b.startMin)
+        : const TimeOfDay(hour: 6, minute: 0);
+    _end = b != null
+        ? TimeOfDay(hour: b.endHour, minute: b.endMin)
+        : const TimeOfDay(hour: 7, minute: 0);
+  }
+
+  @override
+  void dispose() {
+    _activity.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickTime({required bool isStart}) async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: isStart ? _start : _end,
+    );
+    if (picked != null) {
+      setState(() {
+        if (isStart) {
+          _start = picked;
+        } else {
+          _end = picked;
+        }
+      });
+    }
+  }
+
+  String _fmtTime(TimeOfDay t) =>
+      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+
+  Future<void> _save() async {
+    final name = _activity.text.trim();
+    if (name.isEmpty) return;
+    setState(() => _saving = true);
+    try {
+      final actions = ref.read(timetableActionsProvider);
+      if (_isEdit) {
+        await actions.editBlock(
+          widget.block!.id,
+          startHour: _start.hour,
+          startMin: _start.minute,
+          endHour: _end.hour,
+          endMin: _end.minute,
+          activity: name,
+          category: _category,
+          dayType: _dayType,
+        );
+      } else {
+        await actions.addBlock(
+          startHour: _start.hour,
+          startMin: _start.minute,
+          endHour: _end.hour,
+          endMin: _end.minute,
+          activity: name,
+          category: _category,
+          dayType: _dayType,
+        );
+      }
+      if (mounted) Navigator.of(context).pop();
+    } catch (e) {
+      if (mounted) showErrorSnack(context, e);
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            _isEdit ? 'EDIT BLOCK' : 'ADD BLOCK',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
+          const SizedBox(height: 16),
+
+          // Activity name
+          TextField(
+            controller: _activity,
+            decoration: const InputDecoration(labelText: 'ACTIVITY NAME'),
+            textCapitalization: TextCapitalization.sentences,
+          ),
+          const SizedBox(height: 12),
+
+          // Category dropdown
+          DropdownButtonFormField<String>(
+            value: _category,
+            decoration: const InputDecoration(labelText: 'CATEGORY'),
+            items: timetableCategories
+                .map((c) => DropdownMenuItem(
+                      value: c,
+                      child: Row(
+                        children: [
+                          Icon(_categoryIcon(c),
+                              size: 16, color: _categoryColor(c)),
+                          const SizedBox(width: 8),
+                          Text(_categoryLabel(c)),
+                        ],
+                      ),
+                    ))
+                .toList(),
+            onChanged: (v) {
+              if (v != null) setState(() => _category = v);
+            },
+          ),
+          const SizedBox(height: 12),
+
+          // Day type dropdown
+          DropdownButtonFormField<String>(
+            value: _dayType,
+            decoration: const InputDecoration(labelText: 'DAY TYPE'),
+            items: ['ALL', ...timetableDayTypes]
+                .map((d) => DropdownMenuItem(
+                      value: d,
+                      child: Text(d == 'ALL' ? 'Every Day' : d),
+                    ))
+                .toList(),
+            onChanged: (v) {
+              if (v != null) setState(() => _dayType = v);
+            },
+          ),
+          const SizedBox(height: 12),
+
+          // Time pickers
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () => _pickTime(isStart: true),
+                  child: InputDecorator(
+                    decoration: const InputDecoration(labelText: 'START'),
+                    child: Text(_fmtTime(_start)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: InkWell(
+                  onTap: () => _pickTime(isStart: false),
+                  child: InputDecorator(
+                    decoration: const InputDecoration(labelText: 'END'),
+                    child: Text(_fmtTime(_end)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          FilledButton(
+            onPressed: _saving ? null : _save,
+            child: _saving
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(_isEdit ? 'SAVE CHANGES' : 'ADD BLOCK'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Study log sheet ───────────────────────────────────────────────
 
 class _StudyLogSheet extends ConsumerStatefulWidget {
   const _StudyLogSheet({required this.block});

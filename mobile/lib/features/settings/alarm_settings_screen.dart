@@ -4,13 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/alarms/alarm_channel.dart';
 import '../../core/alarms/alarm_sync_service.dart';
 import '../../core/api/api_providers.dart';
+import '../timetable/timetable_provider.dart';
 
-/// GET /v1/settings — raw settings row (snake_case keys).
-final settingsProvider = FutureProvider<Map<String, dynamic>>((ref) async {
-  final api = ref.watch(apiClientProvider);
-  final json = await api.get('/v1/settings');
-  return (json['settings'] as Map<String, dynamic>?) ?? const {};
-});
+/// GET /v1/settings — reuse the shared provider from timetable_provider.
+final settingsProvider = userSettingsProvider;
 
 /// Native permission/health state for the banners.
 final nativeAlarmStateProvider = FutureProvider<Map<String, dynamic>>((ref) async {
