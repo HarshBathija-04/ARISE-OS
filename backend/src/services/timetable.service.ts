@@ -20,8 +20,40 @@ import type {
   TimetableState,
 } from "../db/tables.js";
 import { AppError } from "../middleware/error.js";
+import { supersedeBlockNotifications } from "./scheduler.service.js";
+import { sendDataToUser } from "./push.service.js";
 
 const COMPLETED_STATES: TimetableState[] = ["COMPLETED", "FINISHED_EARLY"];
+
+/**
+ * After any timetable mutation: bump the user's timetable_version (devices
+ * compare it to decide whether to re-sync native alarms), supersede pending
+ * server-side block reminders (re-materialized from the new blocks on the
+ * next scheduler tick), and nudge devices with a silent FCM data message.
+ */
+export async function signalTimetableChanged(userId: string): Promise<number> {
+  const { data, error } = await db
+    .from("users")
+    .select("timetable_version")
+    .eq("id", userId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  const version = ((data?.timetable_version as number) ?? 1) + 1;
+  const { error: updErr } = await db
+    .from("users")
+    .update({ timetable_version: version })
+    .eq("id", userId);
+  if (updErr) throw new Error(updErr.message);
+
+  try {
+    await supersedeBlockNotifications(userId);
+    await sendDataToUser(userId, { type: "resync", what: "timetable", version: String(version) });
+  } catch (e) {
+    // Resync signalling is best-effort — devices also re-sync on resume.
+    console.error("timetable resync signal failed", e);
+  }
+  return version;
+}
 
 /** camelCase view of a timetable block (dates are ISO strings). */
 export interface TimetableBlock {
@@ -220,6 +252,7 @@ export async function addBlock(userId: string, input: BlockInput): Promise<Timet
     .select()
     .single();
   if (error) throw new Error(error.message);
+  await signalTimetableChanged(userId);
   return mapBlock(data as TimetableBlockRow);
 }
 
@@ -248,6 +281,7 @@ export async function editBlock(
     .select()
     .single();
   if (error) throw new Error(error.message);
+  await signalTimetableChanged(userId);
   return mapBlock(data as TimetableBlockRow);
 }
 
@@ -255,6 +289,7 @@ export async function deleteBlock(userId: string, blockId: string): Promise<void
   await findBlock(userId, blockId);
   const { error } = await db.from("timetable_blocks").delete().eq("id", blockId);
   if (error) throw new Error(error.message);
+  await signalTimetableChanged(userId);
 }
 
 /**
@@ -278,6 +313,7 @@ export async function replaceTimetable(
       .insert(blocks.map((b, i) => blockPayload(userId, { dayType, ...b }, i)));
     if (insError) throw new Error(insError.message);
   }
+  await signalTimetableChanged(userId);
   return listBlocks(userId, dayType);
 }
 

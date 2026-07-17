@@ -10,6 +10,7 @@ import '../../features/focus/focus_controller.dart';
 import '../../features/habits/habits_provider.dart';
 import '../../features/quests/quests_provider.dart';
 import '../../features/timetable/timetable_provider.dart';
+import '../alarms/alarm_sync_service.dart';
 import 'realtime_service.dart';
 
 /// Listens to realtime table-change events and invalidates the feature
@@ -44,6 +45,10 @@ final realtimeInvalidatorProvider = Provider<void>((ref) {
         case 'streaks':
           ref.invalidate(dashboardProvider);
           ref.invalidate(habitsProvider);
+        case 'timetable_blocks':
+          // Web edited the schedule: refresh the UI and reschedule native alarms.
+          ref.invalidate(timetableProvider);
+          ref.read(alarmSyncServiceProvider).sync();
         case 'timetable_block_logs':
           ref.invalidate(timetableProvider);
         case 'habit_logs':

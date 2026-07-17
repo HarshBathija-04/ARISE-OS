@@ -34,6 +34,7 @@
 **/*.key
 **/*.mobileprovision
 **/credentials.json
+**/*firebase-adminsdk*.json
 
 # Local Prisma DB files
 **/prisma/*.db

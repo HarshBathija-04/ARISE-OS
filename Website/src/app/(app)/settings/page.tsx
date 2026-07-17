@@ -25,6 +25,17 @@ export default async function SettingsPage() {
     reduceMotion: settings.reduceMotion,
     aiProvider: settings.aiProvider,
     aiModel: settings.aiModel,
+    resetTime: settings.resetTime,
+    eveningReminderTime: settings.eveningReminderTime,
+    pushEnabled: settings.pushEnabled,
+    questPushEnabled: settings.questPushEnabled,
+    timetableAlarmsEnabled: settings.timetableAlarmsEnabled,
+    preReminderMinutes: settings.preReminderMinutes,
+    alarmRepeatCount: settings.alarmRepeatCount,
+    autoStartFocus: settings.autoStartFocus,
+    weekendAlarms: settings.weekendAlarms,
+    dndStart: settings.dndStart,
+    dndEnd: settings.dndEnd,
   };
 
   return (

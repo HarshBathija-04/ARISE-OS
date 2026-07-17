@@ -57,3 +57,34 @@ export function addDays(date: Date, days: number): Date {
   d.setUTCDate(d.getUTCDate() + days);
   return d;
 }
+
+/**
+ * UTC instant corresponding to local wall-clock `HH:MM` on the calendar day
+ * `dayKey` (YYYY-MM-DD) in `timeZone`. Implemented via offset probing with
+ * Intl (no external tz library): guess UTC, measure the zone's rendering of
+ * that instant, correct by the difference. Two passes handle DST edges.
+ */
+export function localTimeToUtcInstant(dayKeyStr: string, hhmm: string, timeZone: string): Date {
+  const [h = 0, m = 0] = hhmm.split(":").map(Number);
+  let guess = new Date(`${dayKeyStr}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00.000Z`);
+  for (let i = 0; i < 2; i++) {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).formatToParts(guess);
+    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "00";
+    const rendered = Date.parse(
+      `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}:00.000Z`,
+    );
+    const target = Date.parse(`${dayKeyStr}T${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00.000Z`);
+    const diff = target - rendered;
+    if (diff === 0) break;
+    guess = new Date(guess.getTime() + diff);
+  }
+  return guess;
+}

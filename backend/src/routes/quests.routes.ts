@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "../db/supabase.js";
 import { completeQuest, ensureTodayQuests, logMainQuestProgress } from "../services/quest.service.js";
 import { getTodayQuests } from "../services/views.service.js";
+import { gameDay } from "../engine/date.js";
 
 export const questsRoutes = Router();
 
@@ -36,6 +37,25 @@ questsRoutes.post("/quests/:id/complete", async (req, res, next) => {
     const { result } = z.object({ result: questResult }).parse(req.body);
     const award = await completeQuest(req.userId, req.params.id, result);
     res.json({ ok: true, award });
+  } catch (e) {
+    next(e);
+  }
+});
+
+// "Skip Remaining" action on the evening reminder: expire today's still-open
+// quests so the reminder stops nagging. Deliberately NOT marked FAILED — no
+// completion rows, no streak penalty (mirrors the daily-reset expiry).
+questsRoutes.post("/quests/skip-remaining", async (req, res, next) => {
+  try {
+    const { data, error } = await db
+      .from("quests")
+      .update({ status: "EXPIRED" })
+      .eq("user_id", req.userId)
+      .eq("assigned_date", gameDay().toISOString())
+      .eq("status", "ACTIVE")
+      .select("id");
+    if (error) throw new Error(error.message);
+    res.json({ ok: true, skipped: data?.length ?? 0 });
   } catch (e) {
     next(e);
   }

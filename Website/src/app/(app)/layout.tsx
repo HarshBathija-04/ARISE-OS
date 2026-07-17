@@ -1,10 +1,12 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { Bot } from "lucide-react";
 import { Sidebar } from "@/components/nav/sidebar";
 import { currentUserId } from "@/lib/current-user";
 import { ensureTodayQuestsViaApi } from "@/lib/player-data";
 import { RealtimeRefresher } from "@/components/realtime-refresher";
+import { PushManager } from "@/components/push/push-manager";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const userId = await currentUserId();
@@ -20,6 +22,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen">
       <RealtimeRefresher />
+      {/* useSearchParams requires a Suspense boundary in an RSC layout */}
+      <Suspense fallback={null}>
+        <PushManager />
+      </Suspense>
       <Sidebar />
       <main className="px-4 pb-24 pt-20 lg:ml-64 lg:px-8 lg:pt-8">
         <div className="mx-auto max-w-6xl">{children}</div>

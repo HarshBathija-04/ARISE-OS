@@ -15,6 +15,7 @@ import {
   xpForLevel,
 } from "../engine/xp-engine.js";
 import { rankForLevel } from "../engine/ranks.js";
+import { insertNotification } from "./notification.service.js";
 
 /** Sum of XP already granted to the player during the current game day. */
 async function xpEarnedToday(userId: string): Promise<number> {
@@ -157,10 +158,9 @@ export async function notify(
   body = "",
   meta?: Record<string, unknown>,
 ) {
-  const { error } = await db.from("notifications").insert({
-    user_id: userId, type, title, body, meta: meta ?? null,
-  });
-  if (error) throw new Error(error.message);
+  // Delegates to notification.service (single insert path shared with
+  // notifyAndPush); kept exported here so existing call sites are untouched.
+  await insertNotification(userId, type, title, body, meta);
 }
 
 /**

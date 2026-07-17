@@ -10,6 +10,7 @@ const _watchedTables = [
   'quests',
   'streaks',
   'notifications',
+  'timetable_blocks',
   'timetable_block_logs',
   'habit_logs',
 ];

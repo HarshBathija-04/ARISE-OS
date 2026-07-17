@@ -109,6 +109,48 @@ miscRoutes.post("/notifications/read", async (req, res, next) => {
   }
 });
 
+// Batch delivery/interaction analytics from clients (opened, action taps,
+// dismissals). SENT/FAILED are written server-side by push.service.
+miscRoutes.post("/notifications/events", async (req, res, next) => {
+  try {
+    const { events } = z
+      .object({
+        events: z
+          .array(
+            z.object({
+              notificationId: z.string().optional(),
+              scheduledId: z.string().optional(),
+              event: z.enum(["DELIVERED", "OPENED", "ACTION", "DISMISSED"]),
+              action: z.string().max(60).optional(),
+              platform: z.enum(["ANDROID", "WEB"]).optional(),
+              responseMs: z.number().int().min(0).optional(),
+              deviceId: z.string().max(128).optional(),
+            }),
+          )
+          .max(200),
+      })
+      .parse(req.body);
+    if (events.length > 0) {
+      const { error } = await db.from("notification_events").insert(
+        events.map((e) => ({
+          user_id: req.userId,
+          notification_id: e.notificationId ?? null,
+          scheduled_id: e.scheduledId ?? null,
+          event: e.event,
+          action: e.action ?? null,
+          platform: e.platform ?? null,
+          response_ms: e.responseMs ?? null,
+          device_id: e.deviceId ?? "",
+        })),
+      );
+      if (error) throw new Error(error.message);
+    }
+    res.json({ ok: true, ingested: events.length });
+  } catch (e) {
+    next(e);
+  }
+});
+
 // ─────────────────── Activity feed ───────────────────
 
 miscRoutes.get("/activity", async (req, res, next) => {

@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/realtime/realtime_invalidator.dart';
 import '../features/achievements/achievements_screen.dart';
+import '../features/alarm/alarm_result_screen.dart';
 import '../features/analytics/analytics_screen.dart';
 import '../features/auth/login_screen.dart';
 import '../features/auth/signup_screen.dart';
@@ -16,6 +17,7 @@ import '../features/focus/focus_screen.dart';
 import '../features/habits/habits_screen.dart';
 import '../features/quests/quests_screen.dart';
 import '../features/rewards/rewards_screen.dart';
+import '../features/settings/alarm_settings_screen.dart';
 import '../features/timetable/timetable_screen.dart';
 
 /// Bridges a Stream into a Listenable for go_router's refreshListenable.
@@ -59,6 +61,17 @@ final routerProvider = Provider<GoRouter>((ref) {
           builder: (_, __) => const AchievementsScreen()),
       GoRoute(path: '/rewards', builder: (_, __) => const RewardsScreen()),
       GoRoute(path: '/analytics', builder: (_, __) => const AnalyticsScreen()),
+      GoRoute(
+          path: '/settings', builder: (_, __) => const AlarmSettingsScreen()),
+      // Landing route after a native alarm interaction (confirm/skip/snooze).
+      GoRoute(
+        path: '/alarm-result',
+        builder: (_, state) => AlarmResultScreen(
+          blockId: state.uri.queryParameters['blockId'] ?? '',
+          date: state.uri.queryParameters['date'] ?? '',
+          action: state.uri.queryParameters['action'] ?? 'confirm',
+        ),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, shell) => _AppShell(shell: shell),
         branches: [

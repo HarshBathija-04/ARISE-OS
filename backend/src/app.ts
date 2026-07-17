@@ -16,6 +16,8 @@ import { bossesRoutes } from "./routes/bosses.routes.js";
 import { miscRoutes } from "./routes/misc.routes.js";
 import { analyticsRoutes } from "./routes/analytics.routes.js";
 import { internalRoutes } from "./routes/internal.routes.js";
+import { devicesRoutes } from "./routes/devices.routes.js";
+import { alarmsRoutes } from "./routes/alarms.routes.js";
 
 export function createApp() {
   const app = express();
@@ -55,6 +57,8 @@ export function createApp() {
   v1.use("/bosses", bossesRoutes);
   v1.use("/", miscRoutes); // /achievements, /titles, /skills, /notifications, /activity
   v1.use("/analytics", analyticsRoutes);
+  v1.use("/devices", devicesRoutes);
+  v1.use("/alarms", alarmsRoutes);
   app.use("/v1", v1);
 
   app.use(notFoundHandler);

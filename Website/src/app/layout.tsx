@@ -10,6 +10,7 @@ const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-mono", displ
 export const metadata: Metadata = {
   title: "Arise OS",
   description: "Arise OS — your real-life RPG progression operating system.",
+  manifest: "/manifest.webmanifest",
 };
 
 export const viewport: Viewport = {

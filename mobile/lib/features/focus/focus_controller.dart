@@ -71,11 +71,43 @@ class FocusController extends StateNotifier<FocusState> {
       'category': category,
       'plannedMinutes': plannedMinutes,
     });
-    _startedAt = DateTime.now();
-    state = FocusState(
+    _adoptSession(
       sessionId: json['sessionId']?.toString(),
       category: category,
       plannedMinutes: plannedMinutes,
+      startedAt: DateTime.now(),
+    );
+  }
+
+  /// Attach to a focus session created elsewhere (e.g. by the backend when an
+  /// alarm Confirm auto-starts one) and begin ticking from [startedAt].
+  void adopt({
+    required String sessionId,
+    required String category,
+    required int plannedMinutes,
+    DateTime? startedAt,
+  }) {
+    _adoptSession(
+      sessionId: sessionId,
+      category: category,
+      plannedMinutes: plannedMinutes,
+      startedAt: startedAt ?? DateTime.now(),
+    );
+    _ref.invalidate(focusTodayProvider);
+  }
+
+  void _adoptSession({
+    required String? sessionId,
+    required String category,
+    required int plannedMinutes,
+    required DateTime startedAt,
+  }) {
+    _startedAt = startedAt;
+    state = FocusState(
+      sessionId: sessionId,
+      category: category,
+      plannedMinutes: plannedMinutes,
+      elapsed: DateTime.now().difference(startedAt),
       running: true,
     );
     _ticker?.cancel();

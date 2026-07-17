@@ -41,6 +41,9 @@ export type NotificationType =
   | "STREAK_AT_RISK"
   | "RECOVERY_ACTIVATED"
   | "ACHIEVEMENT_UNLOCKED"
+  | "DAILY_RESET"
+  | "EVENING_REMINDER"
+  | "BLOCK_REMINDER"
   | "SYSTEM";
 export type ReportType = "DAILY" | "WEEKLY";
 export type TimetableCategory =
@@ -68,6 +71,31 @@ export type TimetableState =
   | "FINISHED_EARLY"
   | "EXCUSED";
 export type TimetableDayType = "ALL" | "OFFICE" | "WFH" | "WEEKEND";
+export type PushPlatform = "ANDROID" | "WEB";
+export type ScheduledKind =
+  | "DAILY_RESET"
+  | "EVENING_REMINDER"
+  | "BLOCK_PRE_REMINDER"
+  | "BLOCK_ALARM"
+  | "CUSTOM";
+export type ScheduledStatus = "PENDING" | "SENT" | "CANCELLED" | "FAILED" | "SUPERSEDED";
+export type AlarmEventType =
+  | "SCHEDULED"
+  | "FIRED"
+  | "DELIVERED"
+  | "CONFIRMED"
+  | "SKIPPED"
+  | "SNOOZED"
+  | "MISSED"
+  | "CANCELLED"
+  | "ERROR";
+export type NotificationEventType =
+  | "SENT"
+  | "DELIVERED"
+  | "OPENED"
+  | "ACTION"
+  | "DISMISSED"
+  | "FAILED";
 
 export type AttrMap = Partial<Record<AttributeKey, number>>;
 
@@ -197,5 +225,96 @@ export interface HabitRow {
   streak_key: string | null;
   private: boolean;
   active: boolean;
+  created_at: string;
+}
+
+export interface AlarmConfig {
+  sound: string;
+  volume: number;
+  vibration: boolean;
+  snoozeOptions: number[];
+  defaultSnooze: number;
+}
+
+export interface UserSettingsRow {
+  id: string;
+  user_id: string;
+  wake_target: string;
+  sleep_target: string;
+  min_sleep_hours: number;
+  daily_xp_soft_cap: number;
+  difficulty_bias: number;
+  ai_provider: string;
+  ai_model: string;
+  theme: string;
+  reduce_motion: boolean;
+  timezone: string;
+  reset_time: string;
+  evening_reminder_time: string;
+  push_enabled: boolean;
+  quest_push_enabled: boolean;
+  timetable_alarms_enabled: boolean;
+  pre_reminder_minutes: number;
+  alarm_repeat_count: number;
+  alarm_repeat_gap_sec: number;
+  auto_start_focus: boolean;
+  weekend_alarms: boolean;
+  dnd_start: string | null;
+  dnd_end: string | null;
+  alarm_config: AlarmConfig;
+  updated_at: string;
+}
+
+export interface PushDeviceRow {
+  id: string;
+  user_id: string;
+  platform: PushPlatform;
+  fcm_token: string;
+  device_id: string;
+  device_name: string;
+  app_version: string;
+  last_seen_at: string;
+  created_at: string;
+}
+
+export interface ScheduledNotificationRow {
+  id: string;
+  user_id: string;
+  kind: ScheduledKind;
+  fire_at: string;
+  status: ScheduledStatus;
+  dedupe_key: string;
+  payload: Record<string, unknown>;
+  sent_at: string | null;
+  error: string | null;
+  created_at: string;
+}
+
+export interface AlarmEventRow {
+  id: string;
+  user_id: string;
+  block_id: string | null;
+  date: string;
+  event: AlarmEventType;
+  attempt: number;
+  snooze_minutes: number | null;
+  skip_reason: string | null;
+  response_ms: number | null;
+  device_id: string;
+  meta: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface NotificationEventRow {
+  id: string;
+  user_id: string;
+  notification_id: string | null;
+  scheduled_id: string | null;
+  event: NotificationEventType;
+  action: string | null;
+  platform: PushPlatform | null;
+  response_ms: number | null;
+  device_id: string;
+  meta: Record<string, unknown>;
   created_at: string;
 }

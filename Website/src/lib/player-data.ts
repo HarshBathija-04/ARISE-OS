@@ -288,6 +288,17 @@ export async function getSettings() {
     aiModel: settings?.ai_model ?? "",
     theme: settings?.theme ?? "dark",
     timezone: settings?.timezone ?? "Asia/Kolkata",
+    resetTime: settings?.reset_time ?? "00:00",
+    eveningReminderTime: settings?.evening_reminder_time ?? "23:00",
+    pushEnabled: settings?.push_enabled ?? true,
+    questPushEnabled: settings?.quest_push_enabled ?? true,
+    timetableAlarmsEnabled: settings?.timetable_alarms_enabled ?? true,
+    preReminderMinutes: settings?.pre_reminder_minutes ?? 5,
+    alarmRepeatCount: settings?.alarm_repeat_count ?? 3,
+    autoStartFocus: settings?.auto_start_focus ?? true,
+    weekendAlarms: settings?.weekend_alarms ?? true,
+    dndStart: settings?.dnd_start ?? null,
+    dndEnd: settings?.dnd_end ?? null,
   };
 }
 

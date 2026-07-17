@@ -179,15 +179,40 @@ export async function updateSettingsAction(input: {
   reduceMotion?: boolean;
   aiProvider?: string;
   aiModel?: string;
+  timezone?: string;
+  resetTime?: string;
+  eveningReminderTime?: string;
+  pushEnabled?: boolean;
+  questPushEnabled?: boolean;
+  timetableAlarmsEnabled?: boolean;
+  preReminderMinutes?: number;
+  alarmRepeatCount?: number;
+  autoStartFocus?: boolean;
+  weekendAlarms?: boolean;
+  dndStart?: string | null;
+  dndEnd?: string | null;
 }) {
+  const hhmm = z.string().regex(/^\d{2}:\d{2}$/);
   const schema = z.object({
-    wakeTarget: z.string().regex(/^\d{2}:\d{2}$/).optional(),
-    sleepTarget: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+    wakeTarget: hhmm.optional(),
+    sleepTarget: hhmm.optional(),
     minSleepHours: z.number().min(3).max(12).optional(),
     difficultyBias: z.number().min(0.5).max(2).optional(),
     reduceMotion: z.boolean().optional(),
     aiProvider: z.enum(["none", "anthropic", "openai", "gemini"]).optional(),
     aiModel: z.string().max(60).optional(),
+    timezone: z.string().max(60).optional(),
+    resetTime: hhmm.optional(),
+    eveningReminderTime: hhmm.optional(),
+    pushEnabled: z.boolean().optional(),
+    questPushEnabled: z.boolean().optional(),
+    timetableAlarmsEnabled: z.boolean().optional(),
+    preReminderMinutes: z.number().int().min(0).max(60).optional(),
+    alarmRepeatCount: z.number().int().min(1).max(10).optional(),
+    autoStartFocus: z.boolean().optional(),
+    weekendAlarms: z.boolean().optional(),
+    dndStart: hhmm.nullable().optional(),
+    dndEnd: hhmm.nullable().optional(),
   });
   const data = schema.parse(input);
   await apiFetch("/v1/settings", { method: "PATCH", body: JSON.stringify(data) });
@@ -215,4 +240,60 @@ export async function resetProfileAction() {
   await apiFetch("/v1/account/reset", { method: "POST", body: "{}" });
   revalidatePath("/");
   return { ok: true };
+}
+
+// ─────────────────── Push devices & notification analytics ───────────────────
+
+export async function registerDeviceAction(input: {
+  fcmToken: string;
+  deviceId: string;
+  deviceName?: string;
+}) {
+  const schema = z.object({
+    fcmToken: z.string().min(1).max(4096),
+    deviceId: z.string().min(1).max(128),
+    deviceName: z.string().max(200).optional(),
+  });
+  const data = schema.parse(input);
+  await apiFetch("/v1/devices", {
+    method: "POST",
+    body: JSON.stringify({ platform: "WEB", ...data }),
+  });
+  return { ok: true };
+}
+
+export async function unregisterDeviceAction(input: { deviceId: string }) {
+  const { deviceId } = z.object({ deviceId: z.string().min(1).max(128) }).parse(input);
+  await apiFetch(`/v1/devices/${encodeURIComponent(deviceId)}`, { method: "DELETE" });
+  return { ok: true };
+}
+
+export async function logNotificationEventAction(input: {
+  notificationId?: string;
+  scheduledId?: string;
+  event: string;
+  action?: string;
+  deviceId?: string;
+}) {
+  const schema = z.object({
+    notificationId: z.string().optional(),
+    scheduledId: z.string().optional(),
+    event: z.enum(["DELIVERED", "OPENED", "ACTION", "DISMISSED"]),
+    action: z.string().max(60).optional(),
+    deviceId: z.string().max(128).optional(),
+  });
+  const data = schema.parse(input);
+  await apiFetch("/v1/notifications/events", {
+    method: "POST",
+    body: JSON.stringify({ events: [{ ...data, platform: "WEB" }] }),
+  });
+  return { ok: true };
+}
+
+/** "Skip Remaining" action from the evening reminder. */
+export async function skipRemainingQuestsAction() {
+  const res = await apiFetch("/v1/quests/skip-remaining", { method: "POST", body: "{}" });
+  revalidatePath("/");
+  revalidatePath("/quests");
+  return { skipped: res.skipped as number };
 }
