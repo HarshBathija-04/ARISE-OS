@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { z } from "zod";
 import { db } from "../db/supabase.js";
 import { bootstrapAccount } from "../services/account.service.js";
+import { signalTimetableChanged } from "../services/timetable.service.js";
 
 export const accountRoutes = Router();
 
@@ -20,6 +20,7 @@ accountRoutes.post("/reset", async (req, res, next) => {
   try {
     const { error } = await db.rpc("reset_profile", { p_user_id: req.userId });
     if (error) throw new Error(error.message);
+    await signalTimetableChanged(req.userId);
     res.json({ ok: true });
   } catch (e) {
     next(e);

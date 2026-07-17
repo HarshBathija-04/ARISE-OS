@@ -239,6 +239,8 @@ export async function logMetricAction(input: { kind: string; value: number }) {
 export async function resetProfileAction() {
   await apiFetch("/v1/account/reset", { method: "POST", body: "{}" });
   revalidatePath("/");
+  revalidatePath("/timetable");
+  revalidatePath("/settings");
   return { ok: true };
 }
 

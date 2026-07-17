@@ -10,7 +10,7 @@ export function ResetButton() {
   const router = useRouter();
 
   async function handleReset() {
-    if (confirm("Are you absolutely sure you want to reset your entire profile? This will wipe your level, XP, coins, attributes, quests, and all tracking history. This cannot be undone.")) {
+    if (confirm("Are you absolutely sure you want to reset your entire profile? This will wipe your level, XP, coins, attributes, quests, timetable, and all tracking history. This cannot be undone.")) {
       setIsPending(true);
       try {
         await resetProfileAction();
