@@ -106,7 +106,13 @@ function shiftDay(key: string, delta: number) {
   return d.toISOString().slice(0, 10);
 }
 
-export function TimeLogBoard({ initialLogs, date }: { initialLogs: ClientTimeLog[]; date: string }) {
+export function TimeLogBoard({
+  initialLogs, date, history = false,
+}: {
+  initialLogs: ClientTimeLog[];
+  date: string;
+  history?: boolean;
+}) {
   const router = useRouter();
   const [logs, setLogs] = useState<ClientTimeLog[]>(initialLogs);
   const [showAdd, setShowAdd] = useState(false);
@@ -128,38 +134,106 @@ export function TimeLogBoard({ initialLogs, date }: { initialLogs: ClientTimeLog
       .sort((a, b) => a.startHour * 60 + a.startMin - (b.startHour * 60 + b.startMin));
   }, [logs, query, filterCat]);
 
+  // History mode: group by day, newest day first.
+  const grouped = useMemo(() => {
+    if (!history) return null;
+    const byDay = new Map<string, ClientTimeLog[]>();
+    for (const l of filtered) {
+      const key = l.date.slice(0, 10);
+      byDay.set(key, [...(byDay.get(key) ?? []), l]);
+    }
+    return [...byDay.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1));
+  }, [filtered, history]);
+
   const totalMin = filtered.reduce((s, l) => s + durationMin(l), 0);
   const totalXp = filtered.reduce((s, l) => s + l.xpAwarded, 0);
   const isToday = date === todayKey();
 
+  function renderRow(l: ClientTimeLog) {
+    return (
+      <TimeLogRow
+        key={l.id}
+        log={l}
+        onEdit={() => setEditLog(l)}
+        onDelete={() => {
+          setLogs((prev) => prev.filter((x) => x.id !== l.id));
+          void deleteTimeLogAction({ id: l.id }).catch(() => router.refresh());
+        }}
+      />
+    );
+  }
+
   return (
     <div className="space-y-5">
-      {/* Day navigation */}
-      <div className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+      {/* Day / History view switcher */}
+      <div className="flex items-center gap-1 rounded-xl border border-white/[0.06] bg-white/[0.02] p-1">
         <button
-          className="btn-ghost px-2"
-          onClick={() => router.push(`/timetable?tab=log&date=${shiftDay(date, -1)}`)}
-          aria-label="Previous day"
+          className={`flex-1 rounded-lg px-3 py-1.5 font-display text-xs font-semibold uppercase tracking-wider transition ${
+            !history
+              ? "border border-arc-cyan/40 bg-arc-cyan/10 text-arc-cyan"
+              : "border border-transparent text-slate-500 hover:text-slate-300"
+          }`}
+          onClick={() => router.push(`/timetable?tab=log&date=${date}`)}
         >
-          <ChevronLeft className="h-4 w-4" />
+          By Day
         </button>
-        <div className="text-center">
-          <p className="font-display text-sm font-semibold text-slate-200">
-            {isToday ? "Today" : date}
-          </p>
-          <p className="sys-label">
-            {Math.floor(totalMin / 60)}h {totalMin % 60}m logged · {totalXp} XP
-          </p>
-        </div>
         <button
-          className="btn-ghost px-2 disabled:opacity-30"
-          disabled={isToday}
-          onClick={() => router.push(`/timetable?tab=log&date=${shiftDay(date, 1)}`)}
-          aria-label="Next day"
+          className={`flex-1 rounded-lg px-3 py-1.5 font-display text-xs font-semibold uppercase tracking-wider transition ${
+            history
+              ? "border border-arc-cyan/40 bg-arc-cyan/10 text-arc-cyan"
+              : "border border-transparent text-slate-500 hover:text-slate-300"
+          }`}
+          onClick={() => router.push(`/timetable?tab=log&view=history`)}
         >
-          <ChevronRight className="h-4 w-4" />
+          History
         </button>
       </div>
+
+      {/* Day navigation (day view only) */}
+      {!history && (
+        <div className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+          <button
+            className="btn-ghost px-2"
+            onClick={() => router.push(`/timetable?tab=log&date=${shiftDay(date, -1)}`)}
+            aria-label="Previous day"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <div className="text-center">
+            <p className="font-display text-sm font-semibold text-slate-200">
+              {isToday ? "Today" : date}
+            </p>
+            <p className="sys-label">
+              {Math.floor(totalMin / 60)}h {totalMin % 60}m logged · {totalXp} XP
+            </p>
+            <input
+              type="date"
+              className="mt-1 cursor-pointer rounded border border-white/10 bg-transparent px-2 py-0.5 font-mono text-[10px] text-slate-500 [color-scheme:dark]"
+              value={date}
+              max={todayKey()}
+              onChange={(e) => {
+                if (e.target.value) router.push(`/timetable?tab=log&date=${e.target.value}`);
+              }}
+              aria-label="Jump to date"
+            />
+          </div>
+          <button
+            className="btn-ghost px-2 disabled:opacity-30"
+            disabled={isToday}
+            onClick={() => router.push(`/timetable?tab=log&date=${shiftDay(date, 1)}`)}
+            aria-label="Next day"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
+      {/* History summary */}
+      {history && (
+        <p className="sys-label text-center">
+          {filtered.length} logs · {Math.floor(totalMin / 60)}h {totalMin % 60}m · {totalXp} XP
+        </p>
+      )}
 
       {/* Search / filter / quick add */}
       <div className="flex flex-wrap items-center gap-2">
@@ -197,20 +271,28 @@ export function TimeLogBoard({ initialLogs, date }: { initialLogs: ClientTimeLog
             you deserve.
           </p>
         </div>
-      ) : (
-        <div className="space-y-2">
-          {filtered.map((l) => (
-            <TimeLogRow
-              key={l.id}
-              log={l}
-              onEdit={() => setEditLog(l)}
-              onDelete={() => {
-                setLogs((prev) => prev.filter((x) => x.id !== l.id));
-                void deleteTimeLogAction({ id: l.id }).catch(() => router.refresh());
-              }}
-            />
+      ) : grouped ? (
+        <div className="space-y-5">
+          {grouped.map(([dayKey, dayLogs]) => (
+            <div key={dayKey} className="space-y-2">
+              <div className="flex items-center justify-between">
+                <button
+                  className="sys-label transition hover:text-arc-cyan"
+                  onClick={() => router.push(`/timetable?tab=log&date=${dayKey}`)}
+                  title="Open this day"
+                >
+                  {dayKey === todayKey() ? "Today" : dayKey}
+                </button>
+                <span className="font-mono text-[10px] text-slate-600">
+                  {dayLogs.length} logs · {dayLogs.reduce((s, l) => s + l.xpAwarded, 0)} XP
+                </span>
+              </div>
+              {dayLogs.map(renderRow)}
+            </div>
           ))}
         </div>
+      ) : (
+        <div className="space-y-2">{filtered.map(renderRow)}</div>
       )}
 
       {(showAdd || editLog) && (

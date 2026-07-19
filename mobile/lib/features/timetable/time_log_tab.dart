@@ -137,10 +137,25 @@ class _TimeLogTabState extends ConsumerState<TimeLogTab> {
     );
   }
 
+  Future<void> _pickDate() async {
+    final current = ref.read(timeLogDateProvider);
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.tryParse(current) ?? DateTime.now(),
+      firstDate: DateTime(2024),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null) {
+      ref.read(timeLogDateProvider.notifier).state =
+          picked.toIso8601String().substring(0, 10);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final logs = ref.watch(timeLogsProvider);
     final date = ref.watch(timeLogDateProvider);
+    final history = ref.watch(timeLogHistoryModeProvider);
     final isToday = date == _todayKey;
 
     return Scaffold(
@@ -153,34 +168,97 @@ class _TimeLogTabState extends ConsumerState<TimeLogTab> {
       ),
       body: Column(
         children: [
-          // Day switcher
+          // By Day / History switcher
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
             child: Row(
               children: [
-                IconButton(
-                  icon: const Icon(Icons.chevron_left,
-                      color: AriseColors.textDim),
-                  onPressed: () => _shiftDay(-1),
-                ),
                 Expanded(
-                  child: Center(
-                    child: Text(
-                      isToday ? 'TODAY' : date,
-                      style: Theme.of(context).textTheme.titleSmall,
+                  child: ChoiceChip(
+                    label: const Center(
+                      child: Text('BY DAY',
+                          style: TextStyle(
+                              fontSize: 11,
+                              letterSpacing: 1,
+                              fontWeight: FontWeight.w700)),
                     ),
+                    selected: !history,
+                    showCheckmark: false,
+                    selectedColor: AriseColors.violetBright,
+                    backgroundColor: AriseColors.panel,
+                    labelStyle: TextStyle(
+                        color: !history
+                            ? AriseColors.bg
+                            : AriseColors.textDim),
+                    side: BorderSide(
+                        color: AriseColors.violet.withValues(alpha: 0.3)),
+                    onSelected: (_) => ref
+                        .read(timeLogHistoryModeProvider.notifier)
+                        .state = false,
                   ),
                 ),
-                IconButton(
-                  icon: Icon(Icons.chevron_right,
-                      color: isToday
-                          ? AriseColors.textDim.withValues(alpha: 0.3)
-                          : AriseColors.textDim),
-                  onPressed: isToday ? null : () => _shiftDay(1),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ChoiceChip(
+                    label: const Center(
+                      child: Text('HISTORY',
+                          style: TextStyle(
+                              fontSize: 11,
+                              letterSpacing: 1,
+                              fontWeight: FontWeight.w700)),
+                    ),
+                    selected: history,
+                    showCheckmark: false,
+                    selectedColor: AriseColors.violetBright,
+                    backgroundColor: AriseColors.panel,
+                    labelStyle: TextStyle(
+                        color: history
+                            ? AriseColors.bg
+                            : AriseColors.textDim),
+                    side: BorderSide(
+                        color: AriseColors.violet.withValues(alpha: 0.3)),
+                    onSelected: (_) => ref
+                        .read(timeLogHistoryModeProvider.notifier)
+                        .state = true,
+                  ),
                 ),
               ],
             ),
           ),
+          // Day switcher (day view only)
+          if (!history)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 4),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.chevron_left,
+                        color: AriseColors.textDim),
+                    onPressed: () => _shiftDay(-1),
+                  ),
+                  Expanded(
+                    child: Center(
+                      child: TextButton.icon(
+                        onPressed: _pickDate,
+                        icon: const Icon(Icons.calendar_month_outlined,
+                            size: 16, color: AriseColors.textDim),
+                        label: Text(
+                          isToday ? 'TODAY' : date,
+                          style: Theme.of(context).textTheme.titleSmall,
+                        ),
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: Icon(Icons.chevron_right,
+                        color: isToday
+                            ? AriseColors.textDim.withValues(alpha: 0.3)
+                            : AriseColors.textDim),
+                    onPressed: isToday ? null : () => _shiftDay(1),
+                  ),
+                ],
+              ),
+            ),
           Expanded(
             child: RefreshIndicator(
               color: AriseColors.blue,
@@ -204,21 +282,71 @@ class _TimeLogTabState extends ConsumerState<TimeLogTab> {
                           ),
                         ],
                       )
-                    : ListView.builder(
-                        physics: const AlwaysScrollableScrollPhysics(),
-                        padding: const EdgeInsets.only(top: 8, bottom: 88),
-                        itemCount: entries.length,
-                        itemBuilder: (context, i) => _TimeLogTile(
-                          log: entries[i],
-                          onEdit: () => _showEditor(log: entries[i]),
-                          onDelete: () => _confirmDelete(entries[i]),
-                        ),
-                      ),
+                    : history
+                        ? _buildHistoryList(entries)
+                        : ListView.builder(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            padding:
+                                const EdgeInsets.only(top: 8, bottom: 88),
+                            itemCount: entries.length,
+                            itemBuilder: (context, i) => _TimeLogTile(
+                              log: entries[i],
+                              onEdit: () => _showEditor(log: entries[i]),
+                              onDelete: () => _confirmDelete(entries[i]),
+                            ),
+                          ),
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  /// History mode: flat list with a day header row before each new day.
+  Widget _buildHistoryList(List<TimeLogEntry> entries) {
+    final items = <Widget>[];
+    String? lastDay;
+    for (final log in entries) {
+      if (log.date != lastDay) {
+        lastDay = log.date;
+        final dayXp = entries
+            .where((l) => l.date == log.date)
+            .fold<int>(0, (s, l) => s + l.xpAwarded);
+        items.add(Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 2),
+          child: Row(
+            children: [
+              Text(
+                log.date == _todayKey ? 'TODAY' : log.date,
+                style: const TextStyle(
+                  color: AriseColors.violetBright,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1,
+                ),
+              ),
+              const Spacer(),
+              if (dayXp > 0)
+                Text(
+                  '+$dayXp XP',
+                  style: const TextStyle(
+                      color: AriseColors.gold, fontSize: 11),
+                ),
+            ],
+          ),
+        ));
+      }
+      items.add(_TimeLogTile(
+        log: log,
+        onEdit: () => _showEditor(log: log),
+        onDelete: () => _confirmDelete(log),
+      ));
+    }
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.only(top: 4, bottom: 88),
+      children: items,
     );
   }
 }

@@ -38,12 +38,13 @@ const TABS: { key: Tab; label: string }[] = [
 export default async function TimetablePage({
   searchParams,
 }: {
-  searchParams: Promise<{ day?: string; tab?: string; date?: string }>;
+  searchParams: Promise<{ day?: string; tab?: string; date?: string; view?: string }>;
 }) {
-  const { day, tab: tabParam, date: dateParam } = await searchParams;
+  const { day, tab: tabParam, date: dateParam, view } = await searchParams;
   const dayType = DAY_PARAM_MAP[day?.toLowerCase() ?? ""] ?? defaultDayType();
   const tab: Tab = tabParam === "log" ? "log" : tabParam === "analytics" ? "analytics" : "schedule";
   const date = /^\d{4}-\d{2}-\d{2}$/.test(dateParam ?? "") ? dateParam! : todayKey();
+  const history = view === "history";
 
   return (
     <div className="space-y-6">
@@ -74,7 +75,7 @@ export default async function TimetablePage({
       </div>
 
       {tab === "schedule" && <ScheduleTab dayType={dayType} />}
-      {tab === "log" && <TimeLogTab date={date} />}
+      {tab === "log" && <TimeLogTab date={date} history={history} />}
       {tab === "analytics" && <AnalyticsTab />}
     </div>
   );
@@ -108,13 +109,15 @@ async function ScheduleTab({ dayType }: { dayType: Exclude<TimetableDayType, "AL
   );
 }
 
-async function TimeLogTab({ date }: { date: string }) {
-  const logs = (await getTimeLogs(date)) as ClientTimeLog[];
+async function TimeLogTab({ date, history }: { date: string; history: boolean }) {
+  // History view: no date filter — the API returns the most recent logs
+  // across all days (up to 200), grouped by day client-side.
+  const logs = (await getTimeLogs(history ? undefined : date)) as ClientTimeLog[];
   return (
     <Panel glow>
       <PanelHeader label="Time Log" title="What Actually Happened" />
       <div className="p-4 sm:p-6">
-        <TimeLogBoard key={date} initialLogs={logs} date={date} />
+        <TimeLogBoard key={history ? "history" : date} initialLogs={logs} date={date} history={history} />
       </div>
     </Panel>
   );

@@ -70,6 +70,7 @@ class TimeLogAnalysis {
 class TimeLogEntry {
   TimeLogEntry({
     required this.id,
+    required this.date,
     required this.startHour,
     required this.startMin,
     required this.endHour,
@@ -89,6 +90,9 @@ class TimeLogEntry {
   });
 
   final String id;
+
+  /// Game-day key YYYY-MM-DD.
+  final String date;
   final int startHour;
   final int startMin;
   final int endHour;
@@ -128,6 +132,9 @@ class TimeLogEntry {
     final energy = pickInt(json, ['energyLevel', 'energy_level'], fallback: -1);
     return TimeLogEntry(
       id: pickString(json, ['id']),
+      date: pickString(json, ['date']).length >= 10
+          ? pickString(json, ['date']).substring(0, 10)
+          : '',
       startHour: pickInt(json, ['startHour', 'start_hour']),
       startMin: pickInt(json, ['startMin', 'start_min']),
       endHour: pickInt(json, ['endHour', 'end_hour']),
@@ -163,16 +170,32 @@ final timeLogDateProvider = StateProvider<String>((ref) {
       '${now.day.toString().padLeft(2, '0')}';
 });
 
-/// GET /v1/time-logs?date=YYYY-MM-DD
+/// History mode: show the most recent logs across ALL days (grouped by day)
+/// instead of a single selected day.
+final timeLogHistoryModeProvider = StateProvider<bool>((ref) => false);
+
+/// GET /v1/time-logs?date=YYYY-MM-DD — or, in history mode, GET /v1/time-logs
+/// (the API returns the latest 200 logs across all days).
 final timeLogsProvider = FutureProvider<List<TimeLogEntry>>((ref) async {
   final api = ref.watch(apiClientProvider);
+  final history = ref.watch(timeLogHistoryModeProvider);
   final date = ref.watch(timeLogDateProvider);
-  final json = await api.get('/v1/time-logs', query: {'date': date});
-  return (json['logs'] as List? ?? const [])
+  final json = await api.get('/v1/time-logs',
+      query: history ? null : {'date': date});
+  final logs = (json['logs'] as List? ?? const [])
       .whereType<Map<String, dynamic>>()
       .map(TimeLogEntry.fromJson)
-      .toList()
-    ..sort((a, b) => a.startMinutes.compareTo(b.startMinutes));
+      .toList();
+  if (history) {
+    // Newest day first, then by start time within a day.
+    logs.sort((a, b) {
+      final byDate = b.date.compareTo(a.date);
+      return byDate != 0 ? byDate : a.startMinutes.compareTo(b.startMinutes);
+    });
+  } else {
+    logs.sort((a, b) => a.startMinutes.compareTo(b.startMinutes));
+  }
+  return logs;
 });
 
 /// GET /v1/time-logs/analytics?days=7 — planned vs actual rollup.
