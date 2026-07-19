@@ -3,6 +3,7 @@ import { buildInsights, type Insight } from "@/lib/ai/guide";
 import { getAiProvider } from "@/lib/ai/provider";
 import { Panel, PanelHeader } from "@/components/ui/panel";
 import { Bot, TrendingUp, AlertTriangle, CheckCircle2, Lightbulb } from "lucide-react";
+import { GuideChat } from "@/components/guide/guide-chat";
 
 const KIND_META: Record<Insight["kind"], { icon: typeof Bot; color: string }> = {
   observation: { icon: TrendingUp, color: "text-arc-blue" },
@@ -57,6 +58,9 @@ export default async function GuidePage() {
           <h1 className="font-display text-2xl font-bold text-slate-100">The Guide</h1>
         </div>
       </div>
+
+      {/* Chat Interface */}
+      <GuideChat />
 
       {briefing ? (
         <Panel className="border-arc-violet/25 bg-arc-violet/[0.05] p-5 shadow-glow-violet">
