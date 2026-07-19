@@ -224,7 +224,7 @@ export async function getDailyMetrics(userId: string, days = 30): Promise<DailyM
   for (const h of habitLogs) {
     const k = String(h.date).slice(0, 10);
     const m = ensure(k);
-    if (h.habit?.key === "wake-5am" && h.result === "DONE") m.wokeOnTime = true;
+    if (h.habit?.streak_key === "wake" && h.result === "DONE") m.wokeOnTime = true;
     if (h.habit?.kind === "SHADOW" && h.result === "RELAPSE") m.cleanDay = false;
   }
 

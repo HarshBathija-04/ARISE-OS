@@ -8,13 +8,21 @@
  * settings, profile, attributes, streaks, habits, main quests, skill trees,
  * achievements, starter title, rewards, first boss battle, welcome
  * notification, and today's quests.
+ *
+ * Personal game content (habits/streaks/main quests/skill trees) is only
+ * seeded when the profile is first created, from the neutral STARTER_* set —
+ * accounts seeded earlier (with the owner's personal content) are untouched
+ * on subsequent bootstrap calls.
  */
 import { db } from "../db/supabase.js";
 import { ATTRIBUTES } from "../engine/attributes.js";
 import { rankForLevel } from "../engine/ranks.js";
-import { HABITS, STREAKS } from "../engine/content/habits.js";
-import { MAIN_QUESTS } from "../engine/content/main-quests.js";
-import { SKILL_TREES } from "../engine/content/skill-trees.js";
+import {
+  STARTER_HABITS,
+  STARTER_STREAKS,
+  STARTER_MAIN_QUESTS,
+  STARTER_SKILL_TREES,
+} from "../engine/content/starter.js";
 import { DEFAULT_REWARDS } from "../engine/content/rewards.js";
 import { ensureTodayQuests } from "./quest.service.js";
 import { notify } from "./xp.service.js";
@@ -79,18 +87,18 @@ export async function bootstrapAccount(userId: string): Promise<{ userId: string
   }
 
   // ── Streaks ──
-  {
+  if (created) {
     const { error } = await db.from("streaks").upsert(
-      STREAKS.map((s) => ({ user_id: userId, key: s.key, title: s.title })),
+      STARTER_STREAKS.map((s) => ({ user_id: userId, key: s.key, title: s.title })),
       { onConflict: "user_id,key", ignoreDuplicates: true },
     );
     check(error);
   }
 
   // ── Habits ──
-  {
+  if (created) {
     const { error } = await db.from("habits").upsert(
-      HABITS.map((h) => ({
+      STARTER_HABITS.map((h) => ({
         user_id: userId,
         key: h.key,
         title: h.title,
@@ -104,7 +112,7 @@ export async function bootstrapAccount(userId: string): Promise<{ userId: string
   }
 
   // ── Main quests + stages ──
-  for (const mq of MAIN_QUESTS) {
+  for (const mq of created ? STARTER_MAIN_QUESTS : []) {
     const { data: quest, error } = await db
       .from("main_quests")
       .upsert(
@@ -137,7 +145,7 @@ export async function bootstrapAccount(userId: string): Promise<{ userId: string
   }
 
   // ── Skill trees + nodes + progress (roots become AVAILABLE) ──
-  for (const tree of SKILL_TREES) {
+  for (const tree of created ? STARTER_SKILL_TREES : []) {
     const { data: createdTree, error } = await db
       .from("skill_trees")
       .upsert(

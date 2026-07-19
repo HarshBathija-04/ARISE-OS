@@ -345,6 +345,7 @@ export function generateDailyQuests(ctx: QuestEngineContext): PlannedQuest[] {
   const streakOf = (q: QuestTemplateDef): string | null =>
     q.streakKey ??
     (q.key.startsWith("gate") || q.key === "mock-test" ? "gate"
+      : q.key.startsWith("dsa") ? "dsa"
       : q.key === "wake-5am" ? "wake"
       : null);
   const fitsUser = (q: QuestTemplateDef): boolean => {
