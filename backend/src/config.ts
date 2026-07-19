@@ -21,6 +21,11 @@ const envSchema = z.object({
   // Public URL of the deployed backend (e.g. https://arise-os.onrender.com).
   // Used by the health-ping cron to keep the service alive.
   BACKEND_URL: z.string().default(""),
+  // AI classification for Time Logs (Gemini by default). When unset, a local
+  // keyword heuristic classifies logs so the module works without a key.
+  AI_PROVIDER: z.enum(["none", "gemini"]).default("none"),
+  AI_API_KEY: z.string().default(""),
+  AI_MODEL: z.string().default("gemini-flash-latest"),
 });
 
 export const config = envSchema.parse(process.env);

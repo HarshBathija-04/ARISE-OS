@@ -71,6 +71,22 @@ export type TimetableState =
   | "FINISHED_EARLY"
   | "EXCUSED";
 export type TimetableDayType = "ALL" | "OFFICE" | "WFH" | "WEEKEND";
+export type TimeLogCategory =
+  | "STUDY"
+  | "CODING"
+  | "AIML"
+  | "READING"
+  | "WRITING"
+  | "FITNESS"
+  | "HEALTH"
+  | "FINANCE"
+  | "BUSINESS"
+  | "PERSONAL"
+  | "ENTERTAINMENT"
+  | "SOCIAL"
+  | "REST";
+export type TimeLogDifficulty = "EASY" | "MEDIUM" | "HARD";
+export type TimeLogAttachmentKind = "FILE" | "SCREENSHOT" | "VOICE_NOTE";
 export type PushPlatform = "ANDROID" | "WEB";
 export type ScheduledKind =
   | "DAILY_RESET"
@@ -214,6 +230,49 @@ export interface TimetableBlockRow {
   day_type: TimetableDayType;
   created_at: string;
   updated_at: string;
+}
+
+export interface TimeLogRow {
+  id: string;
+  user_id: string;
+  date: string;
+  start_hour: number;
+  start_min: number;
+  end_hour: number;
+  end_min: number;
+  activity: string;
+  category: TimeLogCategory;
+  description: string;
+  notes: string;
+  mood: string;
+  energy_level: number | null;
+  location: string;
+  block_id: string | null;
+  ai_summary: string;
+  xp_awarded: number;
+  skill_xp: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TimeLogAiAnalysisRow {
+  id: string;
+  time_log_id: string;
+  user_id: string;
+  provider: string;
+  category: TimeLogCategory;
+  difficulty: TimeLogDifficulty;
+  productivity_score: number;
+  focus_score: number;
+  suggested_skill: string;
+  xp_multiplier: number;
+  is_productive: boolean;
+  is_deep_work: boolean;
+  contributes_quest: boolean;
+  suggest_new_quest: boolean;
+  insights: string;
+  raw: Record<string, unknown>;
+  created_at: string;
 }
 
 export interface HabitRow {

@@ -1,9 +1,15 @@
 /**
  * Streak advancement/reset logic, including Streak Shields.
+ *
+ * Resets go through the Streak Validation Engine first: a streak is only
+ * broken when no evidence of qualifying activity exists anywhere (timetable,
+ * Time Logs, quests, focus/habit/activity records) — see
+ * streak-validation.service.ts.
  */
 import { db } from "../db/supabase.js";
 import { gameDay } from "../engine/date.js";
 import { notify, bumpMetric } from "./xp.service.js";
+import { validateDayEvidence } from "./streak-validation.service.js";
 
 // ─────────────────── Streaks ───────────────────
 
@@ -49,7 +55,21 @@ export async function advanceStreak(userId: string, key: string, success: boolea
     const metric = metricMap[key];
     if (metric) await bumpMetric(userId, metric, current, "set");
   } else {
-    // Failure: try to spend a shield; otherwise reset.
+    // Failure reported — but never break on a single signal. If ANY other
+    // evidence source proves qualifying activity today (completed block,
+    // productive Time Log, quest, focus/habit/activity record), the streak
+    // survives without burning a shield.
+    const evidence = await validateDayEvidence(userId, today);
+    if (evidence.source !== null) {
+      await notify(
+        userId,
+        "SYSTEM",
+        "STREAK VALIDATED",
+        `${streak.title} continues — ${evidence.detail}.`,
+      );
+      return;
+    }
+    // No evidence: try to spend a shield; otherwise reset.
     const { data: shields, error: sErr } = await db
       .from("streak_shields")
       .select("*")

@@ -16,6 +16,7 @@ import { addDays, dayKey, gameDay } from "../engine/date.js";
 import { ensureQuestsForDay } from "./quest.service.js";
 import { notifyAndPush } from "./notification.service.js";
 import { TEMPLATES } from "../engine/content/notification-templates.js";
+import { validateDayEvidence } from "./streak-validation.service.js";
 
 export async function runDailyResetForUser(
   userId: string,
@@ -50,19 +51,26 @@ export async function runDailyResetForUser(
 
   let streakReset = false;
   if (done.length === 0) {
-    const { data: prof, error: profErr } = await db
-      .from("player_profiles")
-      .select("id, current_streak")
-      .eq("user_id", userId)
-      .maybeSingle();
-    if (profErr) throw new Error(profErr.message);
-    if (prof && (prof.current_streak as number) > 0) {
-      const { error } = await db
+    // Streak Validation Engine: quest completions alone are NOT enough to
+    // break a streak. Check every evidence source (completed timetable
+    // blocks, productive Time Logs, quests, focus/habit/activity records)
+    // in priority order — only a day with zero evidence breaks the streak.
+    const evidence = await validateDayEvidence(userId, yesterday);
+    if (evidence.source === null) {
+      const { data: prof, error: profErr } = await db
         .from("player_profiles")
-        .update({ current_streak: 0 })
-        .eq("id", prof.id);
-      if (error) throw new Error(error.message);
-      streakReset = true;
+        .select("id, current_streak")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (profErr) throw new Error(profErr.message);
+      if (prof && (prof.current_streak as number) > 0) {
+        const { error } = await db
+          .from("player_profiles")
+          .update({ current_streak: 0 })
+          .eq("id", prof.id);
+        if (error) throw new Error(error.message);
+        streakReset = true;
+      }
     }
   }
 

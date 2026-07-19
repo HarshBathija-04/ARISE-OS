@@ -372,3 +372,22 @@ export async function getTimetableData(dayType?: "ALL" | "OFFICE" | "WFH" | "WEE
 export async function ensureTodayQuestsViaApi() {
   return apiFetch("/v1/quests/generate", { method: "POST", body: "{}" });
 }
+
+// ─────────────────── Time Log (the "reality" layer) ───────────────────
+
+export async function getTimeLogs(date?: string) {
+  const query = date ? `?date=${date}` : "";
+  const { logs } = await apiFetch<{ logs: any[] }>(`/v1/time-logs${query}`);
+  return logs;
+}
+
+export async function getTimeLogAnalytics(opts: { date?: string; days?: number } = {}) {
+  const params = new URLSearchParams();
+  if (opts.date) params.set("date", opts.date);
+  if (opts.days) params.set("days", String(opts.days));
+  const qs = params.toString();
+  const { analytics } = await apiFetch<{ analytics: any }>(
+    `/v1/time-logs/analytics${qs ? `?${qs}` : ""}`,
+  );
+  return analytics;
+}

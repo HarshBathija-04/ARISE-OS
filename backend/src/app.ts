@@ -18,6 +18,7 @@ import { analyticsRoutes } from "./routes/analytics.routes.js";
 import { internalRoutes } from "./routes/internal.routes.js";
 import { devicesRoutes } from "./routes/devices.routes.js";
 import { alarmsRoutes } from "./routes/alarms.routes.js";
+import { timeLogsRoutes } from "./routes/time-logs.routes.js";
 
 export function createApp() {
   const app = express();
@@ -59,6 +60,7 @@ export function createApp() {
   v1.use("/analytics", analyticsRoutes);
   v1.use("/devices", devicesRoutes);
   v1.use("/alarms", alarmsRoutes);
+  v1.use("/time-logs", timeLogsRoutes);
   app.use("/v1", v1);
 
   app.use(notFoundHandler);

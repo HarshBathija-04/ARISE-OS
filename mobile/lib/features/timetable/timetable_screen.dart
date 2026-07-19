@@ -5,6 +5,8 @@ import '../../app/theme.dart';
 import '../../core/models/models.dart';
 import '../../core/widgets/award_feedback.dart';
 import '../../core/widgets/widgets.dart';
+import 'time_log_analytics_tab.dart';
+import 'time_log_tab.dart';
 import 'timetable_provider.dart';
 
 Color _stateColor(String state) {
@@ -100,6 +102,76 @@ class TimetableScreen extends ConsumerStatefulWidget {
 }
 
 class _TimetableScreenState extends ConsumerState<TimetableScreen> {
+  @override
+  Widget build(BuildContext context) {
+    final settings = ref.watch(userSettingsProvider);
+
+    final alarmsEnabled = settings.maybeWhen(
+      data: (s) => (s['timetable_alarms_enabled'] as bool?) ?? true,
+      orElse: () => true,
+    );
+
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('DAILY SCHEDULE'),
+          actions: [
+            Icon(
+              alarmsEnabled ? Icons.alarm_on : Icons.alarm_off,
+              color: alarmsEnabled ? AriseColors.blue : AriseColors.textDim,
+              size: 20,
+            ),
+            Switch(
+              value: alarmsEnabled,
+              activeColor: AriseColors.blue,
+              onChanged: (v) async {
+                try {
+                  await ref.read(timetableActionsProvider).toggleAlarms(v);
+                } catch (e) {
+                  if (mounted) showErrorSnack(context, e);
+                }
+              },
+            ),
+            const SizedBox(width: 4),
+          ],
+          bottom: const TabBar(
+            labelColor: AriseColors.blue,
+            unselectedLabelColor: AriseColors.textDim,
+            indicatorColor: AriseColors.blue,
+            labelStyle: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1,
+            ),
+            tabs: [
+              Tab(text: 'SCHEDULE'),
+              Tab(text: 'TIME LOG'),
+              Tab(text: 'ANALYTICS'),
+            ],
+          ),
+        ),
+        body: const TabBarView(
+          children: [
+            _ScheduleTab(),
+            TimeLogTab(),
+            TimeLogAnalyticsTab(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The original schedule view (planned timetable) as the first tab.
+class _ScheduleTab extends ConsumerStatefulWidget {
+  const _ScheduleTab();
+
+  @override
+  ConsumerState<_ScheduleTab> createState() => _ScheduleTabState();
+}
+
+class _ScheduleTabState extends ConsumerState<_ScheduleTab> {
   Future<void> _setState(
       TimetableBlock block, String state, {String? reason}) async {
     try {
@@ -307,37 +379,11 @@ class _TimetableScreenState extends ConsumerState<TimetableScreen> {
   Widget build(BuildContext context) {
     final timetable = ref.watch(timetableProvider);
     final dayType = ref.watch(timetableDayTypeProvider);
-    final settings = ref.watch(userSettingsProvider);
-
-    final alarmsEnabled = settings.maybeWhen(
-      data: (s) => (s['timetable_alarms_enabled'] as bool?) ?? true,
-      orElse: () => true,
-    );
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('DAILY SCHEDULE'),
-        actions: [
-          Icon(
-            alarmsEnabled ? Icons.alarm_on : Icons.alarm_off,
-            color: alarmsEnabled ? AriseColors.blue : AriseColors.textDim,
-            size: 20,
-          ),
-          Switch(
-            value: alarmsEnabled,
-            activeColor: AriseColors.blue,
-            onChanged: (v) async {
-              try {
-                await ref.read(timetableActionsProvider).toggleAlarms(v);
-              } catch (e) {
-                if (mounted) showErrorSnack(context, e);
-              }
-            },
-          ),
-          const SizedBox(width: 4),
-        ],
-      ),
+      backgroundColor: Colors.transparent,
       floatingActionButton: FloatingActionButton(
+        heroTag: 'timetable-add',
         backgroundColor: AriseColors.blue,
         onPressed: () => _showBlockEditor(),
         child: const Icon(Icons.add, color: Colors.white),
