@@ -59,11 +59,34 @@ class FocusState {
 /// Drives the focus session lifecycle: start → tick locally → complete/abandon
 /// with the actual elapsed minutes.
 class FocusController extends StateNotifier<FocusState> {
-  FocusController(this._ref) : super(FocusState.idle);
+  FocusController(this._ref) : super(FocusState.idle) {
+    _restore();
+  }
 
   final Ref _ref;
   Timer? _ticker;
   DateTime? _startedAt;
+
+  /// Re-attach to a session that was started but never finished (the app was
+  /// killed or restarted while the gate was open). The ticker resumes from the
+  /// original start time, so the elapsed clock stays truthful.
+  Future<void> _restore() async {
+    try {
+      final sessions = await _ref.read(focusTodayProvider.future);
+      if (state.active) return; // a session was started while we were fetching
+      final open = sessions.where((s) => s.endedAt == null && s.result == null);
+      if (open.isEmpty) return;
+      final s = open.first;
+      _adoptSession(
+        sessionId: s.id,
+        category: s.category,
+        plannedMinutes: s.plannedMin,
+        startedAt: s.startedAt ?? DateTime.now(),
+      );
+    } catch (_) {
+      // Offline or signed out — nothing to restore.
+    }
+  }
 
   Future<void> start({required String category, required int plannedMinutes}) async {
     final api = _ref.read(apiClientProvider);
