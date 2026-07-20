@@ -237,14 +237,18 @@ async function contributeSkillProgress(
   if (tErr) throw new Error(tErr.message);
   if (!tree) return 0;
 
+  type ProgRow = { id: string; user_id: string; status: string; units: number };
   type NodeRow = {
     id: string;
     tier: number;
     target_units: number;
-    progress: { id: string; user_id: string; status: string; units: number }[] | null;
+    // node_id is unique on skill_progress, so PostgREST returns an object, not an array.
+    progress: ProgRow | ProgRow[] | null;
   };
+  const asArray = (p: NodeRow["progress"]): ProgRow[] =>
+    Array.isArray(p) ? p : p ? [p] : [];
   const nodes = ((tree.nodes ?? []) as NodeRow[])
-    .map((n) => ({ ...n, prog: (n.progress ?? []).find((p) => p.user_id === userId) }))
+    .map((n) => ({ ...n, prog: asArray(n.progress).find((p) => p.user_id === userId) }))
     .filter((n) => n.prog && (n.prog.status === "AVAILABLE" || n.prog.status === "IN_PROGRESS"))
     .sort((a, b) => a.tier - b.tier);
   const node = nodes[0];
